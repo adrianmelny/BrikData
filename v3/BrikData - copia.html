@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compresor de Imágenes Sin Pérdida</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0066cc;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 10px;
+        }
+        .panel {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .panel h2 {
+            margin-top: 0;
+            color: #0066cc;
+            font-size: 18px;
+        }
+        input[type="file"], select, button {
+            margin: 5px 0;
+            padding: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0055aa;
+        }
+        button:disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
+        canvas {
+            max-width: 100%;
+            border: 1px solid #ccc;
+            margin: 10px 0;
+        }
+        .file-info {
+            font-size: 14px;
+            color: #666;
+            margin: 10px 0;
+        }
+        .comparison-container {
+            position: relative;
+            display: inline-block;
+            line-height: 0;
+            width: 100%;
+        }
+        .comparison-slider {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: #0066cc;
+            opacity: 0.7;
+            cursor: ew-resize;
+            z-index: 10;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        #previewCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .quality-indicator {
+            height: 10px;
+            border-radius: 5px;
+            margin-top: 5px;
+            background: linear-gradient(to right, #ff3333, #ffcc00, #33cc33);
+        }
+        .metrics {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .psnr-value {
+            font-weight: bold;
+            color: #33cc33;
+        }
+        .ssim-value {
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .compression-log {
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            background-color: #f8f8f8;
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-top: 10px;
+        }
+        .log-entry {
+            margin-bottom: 3px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #eee;
+        }
+        .log-success {
+            color: #33cc33;
+        }
+        .log-warning {
+            color: #ff9900;
+        }
+        .log-error {
+            color: #ff3333;
+        }
+        .preview-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .preview-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Compresor de Imágenes Sin Pérdida</h1>
+        
+        <!-- Panel de carga -->
+        <div class="panel">
+            <h2>1. Subir Imagen Original</h2>
+            <input type="file" id="imageInput" accept="image/*">
+            <div class="preview-container">
+                <span class="preview-label">Vista Previa Original</span>
+                <canvas id="originalCanvas"></canvas>
+            </div>
+            <div class="file-info">
+                <span id="originalSize">Tamaño: 0 MB</span> | 
+                <span id="originalDimensions">Dimensiones: 0x0 px</span> | 
+                <span id="originalFormat">Formato: Desconocido</span>
+            </div>
+        </div>
+        
+        <!-- Panel de configuración -->
+        <div class="panel">
+            <h2>2. Configurar Compresión</h2>
+            <div>
+                <label for="compressionMethod">Método de compresión:</label>
+                <select id="compressionMethod">
+                    <option value="webp">WebP (Recomendado)</option>
+                    <option value="png">PNG</option>
+                    <option value="jpeg">JPEG (Calidad alta)</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="compressionLevel">Nivel de compresión:</label>
+                <select id="compressionLevel">
+                    <option value="balanced">Equilibrado (Recomendado)</option>
+                    <option value="aggressive">Agresivo (Más compresión)</option>
+                    <option value="conservative">Conservador (Máxima calidad)</option>
+                </select>
+            </div>
+            
+            <div>
+                <input type="checkbox" id="removeMetadata" checked>
+                <label for="removeMetadata">Eliminar metadatos EXIF</label>
+            </div>
+            
+            <div>
+                <label for="lossTolerance">Tolerancia a pérdida de calidad:</label>
+                <select id="lossTolerance">
+                    <option value="0.5">Mínima (0.5%)</option>
+                    <option value="1" selected>Baja (1%)</option>
+                    <option value="2">Moderada (2%)</option>
+                    <option value="5">Media (5%) - No recomendado</option>
+                </select>
+            </div>
+            
+            <button id="compressBtn" disabled>Optimizar Imagen</button>
+        </div>
+        
+        <!-- Panel de vista previa -->
+        <div class="panel">
+            <h2>Comparación Original/Comprimida</h2>
+            <div class="comparison-container" id="comparisonContainer">
+                <canvas id="originalComparison"></canvas>
+                <canvas id="previewCanvas"></canvas>
+                <div class="comparison-slider" id="comparisonSlider"></div>
+            </div>
+            <div class="file-info">
+                <span id="previewSize">Tamaño estimado: 0 KB</span> | 
+                <span id="previewQuality">Calidad estimada: 100%</span>
+            </div>
+            <div class="metrics">
+                <div>PSNR: <span id="psnrValue">-</span> dB (Valores > 30dB son buenos)</div>
+                <div>SSIM: <span id="ssimValue">-</span> (1.0 es perfecto)</div>
+                <div class="quality-indicator" id="qualityIndicator"></div>
+            </div>
+            <div id="compressionLog" style="display:none;">
+                <h3>Registro de compresión:</h3>
+                <div id="logEntries"></div>
+            </div>
+        </div>
+        
+        <!-- Panel de resultados -->
+        <div class="panel">
+            <h2>3. Resultado Optimizado</h2>
+            <div id="compressionStats"></div>
+            <div class="file-info">
+                <span id="compressedSize">Tamaño comprimido: 0 KB</span> | 
+                <span id="compressionRatio">Ratio: 0%</span> | 
+                <span id="finalQuality">Calidad final: 100%</span>
+            </div>
+            <button id="downloadBtn" disabled>Descargar Imagen</button>
+        </div>
+    </div>
+
+    <script>
+        // Elementos del DOM
+        const elements = {
+            imageInput: document.getElementById('imageInput'),
+            originalCanvas: document.getElementById('originalCanvas'),
+            originalCtx: document.getElementById('originalCanvas').getContext('2d'),
+            originalSize: document.getElementById('originalSize'),
+            originalDimensions: document.getElementById('originalDimensions'),
+            originalFormat: document.getElementById('originalFormat'),
+            compressionMethod: document.getElementById('compressionMethod'),
+            compressionLevel: document.getElementById('compressionLevel'),
+            removeMetadata: document.getElementById('removeMetadata'),
+            lossTolerance: document.getElementById('lossTolerance'),
+            compressBtn: document.getElementById('compressBtn'),
+            compressedSize: document.getElementById('compressedSize'),
+            compressionRatio: document.getElementById('compressionRatio'),
+            finalQuality: document.getElementById('finalQuality'),
+            downloadBtn: document.getElementById('downloadBtn'),
+            previewCanvas: document.getElementById('previewCanvas'),
+            previewCtx: document.getElementById('previewCanvas').getContext('2d'),
+            previewSize: document.getElementById('previewSize'),
+            previewQuality: document.getElementById('previewQuality'),
+            comparisonContainer: document.getElementById('comparisonContainer'),
+            comparisonSlider: document.getElementById('comparisonSlider'),
+            originalComparison: document.getElementById('originalComparison'),
+            originalComparisonCtx: document.getElementById('originalComparison').getContext('2d'),
+            psnrValue: document.getElementById('psnrValue'),
+            ssimValue: document.getElementById('ssimValue'),
+            qualityIndicator: document.getElementById('qualityIndicator'),
+            compressionLog: document.getElementById('compressionLog'),
+            logEntries: document.getElementById('logEntries'),
+            compressionStats: document.getElementById('compressionStats')
+        };
+
+        // Variables globales
+        let state = {
+            originalImageData: null,
+            originalImageBlob: null,
+            originalFileSize: 0,
+            originalImageType: 'unknown',
+            optimizedBlob: null,
+            compressionAttempts: [],
+            currentAttempt: 0,
+            originalImageForComparison: null
+        };
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            setupComparisonSlider();
+        });
+
+        /** Configura los event listeners */
+        function setupEventListeners() {
+            // Carga de imagen original
+            elements.imageInput.addEventListener('change', handleImageUpload);
+            
+            // Controles de compresión
+            elements.compressionMethod.addEventListener('change', updateQualityEstimate);
+            elements.compressionLevel.addEventListener('change', updateQualityEstimate);
+            elements.lossTolerance.addEventListener('change', updateQualityEstimate);
+            
+            // Botón de compresión
+            elements.compressBtn.addEventListener('click', optimizeImage);
+            
+            // Descarga de archivo comprimido
+            elements.downloadBtn.addEventListener('click', downloadOptimizedImage);
+        }
+
+        /** Configura el slider de comparación */
+        function setupComparisonSlider() {
+            let isDragging = false;
+            
+            elements.comparisonSlider.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                updateSliderPosition(e.clientX);
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    updateSliderPosition(e.clientX);
+                    e.preventDefault();
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            function updateSliderPosition(x) {
+                const container = elements.comparisonContainer.getBoundingClientRect();
+                const position = Math.max(0, Math.min(1, (x - container.left) / container.width));
+                elements.comparisonSlider.style.left = `${position * 100}%`;
+                
+                // Aplicar clip path al canvas de previsualización
+                elements.previewCanvas.style.clipPath = `polygon(0 0, ${position * 100}% 0, ${position * 100}% 100%, 0 100%)`;
+            }
+        }
+
+        /** Maneja la subida de la imagen original */
+        async function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                state.originalFileSize = file.size;
+                state.originalImageBlob = file;
+                
+                // Mostrar información del archivo
+                elements.originalSize.textContent = `Tamaño: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+                
+                // Cargar imagen en canvas
+                const img = await loadImage(file);
+                drawImageToCanvas(img, elements.originalCanvas, elements.originalCtx);
+                
+                // Copiar al canvas de comparación original
+                elements.originalComparison.width = img.width;
+                elements.originalComparison.height = img.height;
+                elements.originalComparisonCtx.drawImage(img, 0, 0);
+                
+                // Mostrar dimensiones
+                elements.originalDimensions.textContent = `Dimensiones: ${img.width}x${img.height} px`;
+                
+                // Determinar tipo de imagen
+                state.originalImageType = detectImageType(file);
+                elements.originalFormat.textContent = `Formato: ${state.originalImageType.toUpperCase()}`;
+                
+                // Guardar imagen original para comparación
+                state.originalImageForComparison = img;
+                
+                // Habilitar botón de compresión
+                elements.compressBtn.disabled = false;
+                
+                // Actualizar estimación de calidad
+                updateQualityEstimate();
+                
+            } catch (error) {
+                console.error('Error al cargar imagen:', error);
+                alert('Error al cargar la imagen: ' + error.message);
+            }
+        }
+
+        /** Detecta el tipo de imagen basado en su firma */
+        function detectImageType(file) {
+            const name = file.name.toLowerCase();
+            if (name.endsWith('.png')) return 'png';
+            if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'jpeg';
+            if (name.endsWith('.webp')) return 'webp';
+            if (name.endsWith('.gif')) return 'gif';
+            if (name.endsWith('.bmp')) return 'bmp';
+            return 'unknown';
+        }
+
+        /** Actualiza la estimación de calidad */
+        function updateQualityEstimate() {
+            if (!state.originalImageBlob) return;
+            
+            // Mostrar estimación basada en configuración
+            const method = elements.compressionMethod.value;
+            const level = elements.compressionLevel.value;
+            
+            let qualityEstimate = 100;
+            let sizeEstimate = state.originalFileSize * 0.7; // Estimación inicial
+            
+            if (method === 'webp') {
+                if (level === 'balanced') {
+                    qualityEstimate = 95;
+                    sizeEstimate = state.originalFileSize * 0.5;
+                } else if (level === 'aggressive') {
+                    qualityEstimate = 90;
+                    sizeEstimate = state.originalFileSize * 0.4;
+                } else {
+                    qualityEstimate = 98;
+                    sizeEstimate = state.originalFileSize * 0.6;
+                }
+            } else if (method === 'png') {
+                if (level === 'balanced') {
+                    qualityEstimate = 100;
+                    sizeEstimate = state.originalFileSize * 0.8;
+                } else if (level === 'aggressive') {
+                    qualityEstimate = 100;
+                    sizeEstimate = state.originalFileSize * 0.7;
+                } else {
+                    qualityEstimate = 100;
+                    sizeEstimate = state.originalFileSize * 0.9;
+                }
+            } else if (method === 'jpeg') {
+                if (level === 'balanced') {
+                    qualityEstimate = 90;
+                    sizeEstimate = state.originalFileSize * 0.6;
+                } else if (level === 'aggressive') {
+                    qualityEstimate = 85;
+                    sizeEstimate = state.originalFileSize * 0.5;
+                } else {
+                    qualityEstimate = 95;
+                    sizeEstimate = state.originalFileSize * 0.7;
+                }
+            }
+            
+            elements.previewQuality.textContent = `Calidad estimada: ${qualityEstimate}%`;
+            elements.previewSize.textContent = `Tamaño estimado: ${(sizeEstimate / 1024).toFixed(2)} KB`;
+            
+            // Actualizar indicador de calidad
+            updateQualityIndicator(qualityEstimate);
+        }
+
+        /** Actualiza el indicador visual de calidad */
+        function updateQualityIndicator(quality) {
+            const indicator = elements.qualityIndicator;
+            indicator.style.width = `${quality}%`;
+            
+            if (quality >= 90) {
+                indicator.style.backgroundColor = '#33cc33';
+            } else if (quality >= 75) {
+                indicator.style.backgroundColor = '#ffcc00';
+            } else {
+                indicator.style.backgroundColor = '#ff3333';
+            }
+        }
+
+        /** Optimiza la imagen con los ajustes seleccionados */
+        async function optimizeImage() {
+            try {
+                // Resetear estado
+                state.compressionAttempts = [];
+                state.currentAttempt = 0;
+                state.optimizedBlob = null;
+                
+                // Configurar UI
+                elements.compressBtn.disabled = true;
+                elements.compressBtn.textContent = 'Optimizando...';
+                elements.compressionLog.style.display = 'block';
+                elements.logEntries.innerHTML = '';
+                
+                // Obtener parámetros
+                const method = elements.compressionMethod.value;
+                const level = elements.compressionLevel.value;
+                const removeMeta = elements.removeMetadata.checked;
+                const tolerance = parseFloat(elements.lossTolerance.value);
+                
+                // Realizar múltiples pasadas de compresión
+                await performCompressionPass(method, level, removeMeta, tolerance);
+                
+                // Mostrar resultados finales
+                showFinalResults();
+                
+            } catch (error) {
+                console.error('Error en la optimización:', error);
+                addLogEntry(`Error en la optimización: ${error.message}`, 'error');
+                alert('Error al optimizar la imagen: ' + error.message);
+            } finally {
+                elements.compressBtn.disabled = false;
+                elements.compressBtn.textContent = 'Optimizar Imagen';
+            }
+        }
+
+        /** Realiza pasadas de compresión con ajuste fino */
+        async function performCompressionPass(method, level, removeMeta, tolerance) {
+            let bestAttempt = null;
+            let attempts = [];
+            
+            // Configurar parámetros basados en nivel
+            let quality = 100;
+            let passes = 1;
+            
+            if (level === 'balanced') {
+                quality = 95;
+                passes = 3;
+            } else if (level === 'aggressive') {
+                quality = 90;
+                passes = 4;
+            } else {
+                quality = 98;
+                passes = 2;
+            }
+            
+            // Realizar pasadas de compresión
+            for (let i = 0; i < passes; i++) {
+                const currentQuality = quality - (i * 5);
+                const attemptQuality = Math.max(70, currentQuality); // No bajar de 70%
+                
+                addLogEntry(`Pasada ${i+1}: Comprimiendo con calidad ${attemptQuality}%...`);
+                
+                try {
+                    const result = await compressImageWithQuality(
+                        state.originalImageBlob, 
+                        attemptQuality / 100, 
+                        method, 
+                        removeMeta
+                    );
+                    
+                    // Calcular métricas de calidad
+                    const compressedImg = await loadImage(result.blob);
+                    const metrics = await calculateQualityMetrics(
+                        state.originalImageForComparison, 
+                        compressedImg
+                    );
+                    
+                    const attempt = {
+                        quality: attemptQuality,
+                        blob: result.blob,
+                        size: result.blob.size,
+                        psnr: metrics.psnr,
+                        ssim: metrics.ssim,
+                        compressionRatio: (result.blob.size / state.originalFileSize) * 100
+                    };
+                    
+                    attempts.push(attempt);
+                    addLogEntry(`Pasada ${i+1} completada: ${(attempt.size / 1024).toFixed(2)} KB (PSNR: ${attempt.psnr.toFixed(2)} dB, SSIM: ${attempt.ssim.toFixed(3)})`, 'success');
+                    
+                    // Verificar si cumple con la tolerancia de calidad
+                    const qualityLoss = 100 - (attempt.ssim * 100);
+                    
+                    if (qualityLoss <= tolerance) {
+                        if (!bestAttempt || attempt.size < bestAttempt.size) {
+                            bestAttempt = attempt;
+                        }
+                    }
+                    
+                    // Mostrar vista previa de esta pasada
+                    showCompressionPreview(attempt.blob, attempt.psnr, attempt.ssim);
+                    
+                } catch (error) {
+                    addLogEntry(`Error en pasada ${i+1}: ${error.message}`, 'error');
+                    console.error(`Error en pasada ${i+1}:`, error);
+                }
+            }
+            
+            // Si ninguna pasada cumple con la tolerancia, usar la mejor disponible
+            if (!bestAttempt && attempts.length > 0) {
+                // Ordenar por mejor relación calidad/tamaño
+                attempts.sort((a, b) => {
+                    const aScore = a.ssim / (a.size / state.originalFileSize);
+                    const bScore = b.ssim / (b.size / state.originalFileSize);
+                    return bScore - aScore;
+                });
+                
+                bestAttempt = attempts[0];
+                addLogEntry(`Ninguna pasada cumple con la tolerancia (${tolerance}%). Usando mejor opción disponible.`, 'warning');
+            }
+            
+            if (!bestAttempt) {
+                throw new Error('No se pudo encontrar una compresión válida que cumpla con los requisitos de calidad.');
+            }
+            
+            // Guardar el mejor intento
+            state.compressionAttempts = attempts;
+            state.optimizedBlob = bestAttempt.blob;
+            state.currentAttempt = attempts.findIndex(a => a === bestAttempt);
+            
+            addLogEntry(`Mejor compresión seleccionada: Pasada ${state.currentAttempt + 1}`, 'success');
+        }
+
+        /** Comprime una imagen con la calidad especificada */
+        async function compressImageWithQuality(blob, quality, format, removeMetadata) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    
+                    canvas.toBlob(function(optimizedBlob) {
+                        if (!optimizedBlob) {
+                            reject(new Error('No se pudo generar el blob de imagen'));
+                            return;
+                        }
+                        
+                        if (removeMetadata) {
+                            const cleanImg = new Image();
+                            cleanImg.onload = function() {
+                                const cleanCanvas = document.createElement('canvas');
+                                cleanCanvas.width = cleanImg.width;
+                                cleanCanvas.height = cleanImg.height;
+                                const cleanCtx = cleanCanvas.getContext('2d');
+                                cleanCtx.drawImage(cleanImg, 0, 0);
+                                
+                                cleanCanvas.toBlob(function(cleanBlob) {
+                                    if (!cleanBlob) {
+                                        resolve({ blob: optimizedBlob });
+                                        return;
+                                    }
+                                    resolve({ blob: cleanBlob });
+                                }, `image/${format}`);
+                            };
+                            cleanImg.onerror = function() {
+                                resolve({ blob: optimizedBlob });
+                            };
+                            cleanImg.src = URL.createObjectURL(optimizedBlob);
+                        } else {
+                            resolve({ blob: optimizedBlob });
+                        }
+                    }, `image/${format}`, quality);
+                };
+                img.onerror = function() {
+                    reject(new Error('Error al cargar la imagen para compresión'));
+                };
+                img.src = URL.createObjectURL(blob);
+            });
+        }
+
+        /** Muestra una vista previa de la compresión */
+        async function showCompressionPreview(blob, psnr, ssim) {
+            const img = await loadImage(blob);
+            
+            // Asegurarse que el canvas tenga el tamaño correcto
+            elements.previewCanvas.width = img.width;
+            elements.previewCanvas.height = img.height;
+            elements.previewCtx.drawImage(img, 0, 0, img.width, img.height);
+            
+            // Actualizar métricas
+            elements.psnrValue.textContent = psnr.toFixed(2);
+            elements.ssimValue.textContent = ssim.toFixed(3);
+            
+            // Actualizar indicador de calidad
+            updateQualityIndicator(ssim * 100);
+            
+            // Forzar redibujado del slider de comparación
+            updateComparisonSlider();
+        }
+
+        /** Muestra los resultados finales de la compresión */
+        function showFinalResults() {
+            if (!state.optimizedBlob || state.compressionAttempts.length === 0) {
+                throw new Error('No hay resultados de compresión para mostrar');
+            }
+            
+            const bestAttempt = state.compressionAttempts[state.currentAttempt];
+            const originalSizeKB = state.originalFileSize / 1024;
+            const compressedSizeKB = bestAttempt.size / 1024;
+            const ratio = (compressedSizeKB / originalSizeKB) * 100;
+            const savings = 100 - ratio;
+            
+            // Mostrar estadísticas
+            elements.compressedSize.textContent = `Tamaño comprimido: ${compressedSizeKB.toFixed(2)} KB`;
+            elements.compressionRatio.textContent = `Ratio: ${ratio.toFixed(2)}%`;
+            elements.finalQuality.textContent = `Calidad final: ${(bestAttempt.ssim * 100).toFixed(1)}%`;
+            
+            // Mostrar resumen
+            elements.compressionStats.innerHTML = `
+                <strong>Resumen de optimización:</strong><br>
+                • Tamaño original: ${originalSizeKB.toFixed(2)} KB<br>
+                • Tamaño optimizado: ${compressedSizeKB.toFixed(2)} KB (${savings.toFixed(2)}% más pequeño)<br>
+                • PSNR: ${bestAttempt.psnr.toFixed(2)} dB (${getPsnrRating(bestAttempt.psnr)})<br>
+                • SSIM: ${bestAttempt.ssim.toFixed(3)} (${getSsimRating(bestAttempt.ssim)})<br>
+                • Método: ${elements.compressionMethod.value.toUpperCase()}
+            `;
+            
+            // Habilitar botón de descarga
+            elements.downloadBtn.disabled = false;
+            
+            // Mostrar vista previa final
+            showCompressionPreview(bestAttempt.blob, bestAttempt.psnr, bestAttempt.ssim);
+        }
+
+        /** Obtiene una valoración cualitativa del PSNR */
+        function getPsnrRating(psnr) {
+            if (psnr > 40) return 'Excelente';
+            if (psnr > 30) return 'Buena';
+            if (psnr > 25) return 'Aceptable';
+            return 'Baja calidad';
+        }
+
+        /** Obtiene una valoración cualitativa del SSIM */
+        function getSsimRating(ssim) {
+            if (ssim > 0.95) return 'Excelente';
+            if (ssim > 0.90) return 'Buena';
+            if (ssim > 0.80) return 'Aceptable';
+            return 'Baja calidad';
+        }
+
+        /** Calcula métricas de calidad entre dos imágenes */
+        async function calculateQualityMetrics(originalImg, compressedImg) {
+            // Crear canvas para ambas imágenes
+            const canvas1 = document.createElement('canvas');
+            canvas1.width = originalImg.width;
+            canvas1.height = originalImg.height;
+            const ctx1 = canvas1.getContext('2d');
+            ctx1.drawImage(originalImg, 0, 0);
+            
+            const canvas2 = document.createElement('canvas');
+            canvas2.width = compressedImg.width;
+            canvas2.height = compressedImg.height;
+            const ctx2 = canvas2.getContext('2d');
+            ctx2.drawImage(compressedImg, 0, 0);
+            
+            // Asegurarse que ambas imágenes tienen el mismo tamaño
+            if (canvas1.width !== canvas2.width || canvas1.height !== canvas2.height) {
+                throw new Error('Las imágenes deben tener las mismas dimensiones para comparar calidad');
+            }
+            
+            // Obtener datos de imagen
+            const imageData1 = ctx1.getImageData(0, 0, canvas1.width, canvas1.height);
+            const imageData2 = ctx2.getImageData(0, 0, canvas2.width, canvas2.height);
+            
+            // Calcular PSNR (Peak Signal-to-Noise Ratio)
+            const psnr = calculatePSNR(imageData1, imageData2);
+            
+            // Calcular SSIM (Structural Similarity Index)
+            const ssim = calculateSSIM(imageData1, imageData2);
+            
+            return { psnr, ssim };
+        }
+
+        /** Calcula el PSNR entre dos ImageData */
+        function calculatePSNR(img1, img2) {
+            const width = img1.width;
+            const height = img1.height;
+            const data1 = img1.data;
+            const data2 = img2.data;
+            
+            let mse = 0;
+            let max = 255; // Para imágenes de 8 bits por canal
+            
+            for (let i = 0; i < data1.length; i += 4) {
+                const r1 = data1[i];
+                const g1 = data1[i+1];
+                const b1 = data1[i+2];
+                
+                const r2 = data2[i];
+                const g2 = data2[i+1];
+                const b2 = data2[i+2];
+                
+                mse += Math.pow(r1 - r2, 2) + Math.pow(g1 - g2, 2) + Math.pow(b1 - b2, 2);
+            }
+            
+            mse /= (width * height * 3); // MSE para los 3 canales
+            
+            if (mse === 0) return Infinity; // Imágenes idénticas
+            
+            return 10 * Math.log10((max * max) / mse);
+        }
+
+        /** Calcula el SSIM entre dos ImageData (versión simplificada) */
+        function calculateSSIM(img1, img2) {
+            const width = img1.width;
+            const height = img1.height;
+            const data1 = img1.data;
+            const data2 = img2.data;
+            
+            // Parámetros SSIM
+            const K1 = 0.01;
+            const K2 = 0.03;
+            const L = 255; // Rango dinámico
+            const C1 = Math.pow(K1 * L, 2);
+            const C2 = Math.pow(K2 * L, 2);
+            
+            let sumSSIM = 0;
+            const windowSize = 8;
+            const windowsX = Math.floor(width / windowSize);
+            const windowsY = Math.floor(height / windowSize);
+            
+            // Calcular SSIM en ventanas para mejorar rendimiento
+            for (let y = 0; y < windowsY; y++) {
+                for (let x = 0; x < windowsX; x++) {
+                    let sum1 = 0, sum2 = 0, sum12 = 0, sum1sq = 0, sum2sq = 0;
+                    let count = 0;
+                    
+                    // Calcular estadísticas en la ventana
+                    for (let j = 0; j < windowSize; j++) {
+                        for (let i = 0; i < windowSize; i++) {
+                            const px = x * windowSize + i;
+                            const py = y * windowSize + j;
+                            
+                            if (px >= width || py >= height) continue;
+                            
+                            const idx = (py * width + px) * 4;
+                            const r1 = data1[idx];
+                            const g1 = data1[idx+1];
+                            const b1 = data1[idx+2];
+                            
+                            const r2 = data2[idx];
+                            const g2 = data2[idx+1];
+                            const b2 = data2[idx+2];
+                            
+                            // Convertir a luminancia (aproximación)
+                            const l1 = 0.299 * r1 + 0.587 * g1 + 0.114 * b1;
+                            const l2 = 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+                            
+                            sum1 += l1;
+                            sum2 += l2;
+                            sum12 += l1 * l2;
+                            sum1sq += l1 * l1;
+                            sum2sq += l2 * l2;
+                            count++;
+                        }
+                    }
+                    
+                    if (count === 0) continue;
+                    
+                    // Calcular media y varianza
+                    const mu1 = sum1 / count;
+                    const mu2 = sum2 / count;
+                    const sigma1 = Math.sqrt(sum1sq / count - mu1 * mu1);
+                    const sigma2 = Math.sqrt(sum2sq / count - mu2 * mu2);
+                    const sigma12 = sum12 / count - mu1 * mu2;
+                    
+                    // Calcular SSIM para esta ventana
+                    const numerator = (2 * mu1 * mu2 + C1) * (2 * sigma12 + C2);
+                    const denominator = (mu1 * mu1 + mu2 * mu2 + C1) * (sigma1 * sigma1 + sigma2 * sigma2 + C2);
+                    const windowSSIM = numerator / denominator;
+                    
+                    sumSSIM += windowSSIM;
+                }
+            }
+            
+            // Promedio de SSIM en todas las ventanas
+            return sumSSIM / (windowsX * windowsY);
+        }
+
+        /** Descarga la imagen optimizada */
+        function downloadOptimizedImage() {
+            if (!state.optimizedBlob) {
+                alert('No hay imagen optimizada para descargar');
+                return;
+            }
+            
+            // Determinar extensión basada en método de compresión
+            let extension = elements.compressionMethod.value;
+            if (extension === 'jpeg') extension = 'jpg';
+            
+            const url = URL.createObjectURL(state.optimizedBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `imagen_optimizada_${Date.now()}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /** Carga una imagen desde un Blob */
+        function loadImage(blob) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => {
+                    console.error('Error al cargar la imagen');
+                    reject(new Error('Error al cargar la imagen. El archivo puede estar corrupto.'));
+                };
+                img.src = URL.createObjectURL(blob);
+            });
+        }
+
+        /** Dibuja una imagen en un canvas */
+        function drawImageToCanvas(img, canvas, ctx) {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+        }
+
+        /** Actualiza el slider de comparación */
+        function updateComparisonSlider() {
+            if (!elements.previewCanvas.width) return;
+            
+            const container = elements.comparisonContainer.getBoundingClientRect();
+            const position = 0.5; // Centrado por defecto
+            
+            elements.comparisonSlider.style.left = `${position * 100}%`;
+            elements.previewCanvas.style.clipPath = `polygon(0 0, ${position * 100}% 0, ${position * 100}% 100%, 0 100%)`;
+        }
+
+        /** Agrega una entrada al registro de compresión */
+        function addLogEntry(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            elements.logEntries.appendChild(entry);
+            
+            // Auto-scroll al final
+            elements.compressionLog.scrollTop = elements.compressionLog.scrollHeight;
+        }
+    </script>
+</body>
+</html>

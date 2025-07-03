@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Image Compressor Pro</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --primary-dark: #2980b9;
+            --secondary-color: #2c3e50;
+            --light-gray: #f5f7fa;
+            --medium-gray: #e2e8f0;
+            --dark-gray: #4a5568;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --error-color: #e74c3c;
+            --info-color: #3498db;
+            --text-color: #333;
+            --white: #ffffff;
+            --black: #1a202c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--light-gray);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            overflow: hidden;
+            flex-grow: 1;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-sidebar {
+            width: 350px;
+            background-color: var(--secondary-color);
+            color: var(--white);
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 1px solid var(--medium-gray);
+        }
+
+        h1 {
+            color: var(--secondary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 12px;
+            margin-bottom: 25px;
+            font-weight: 600;
+            font-size: 28px;
+        }
+
+        h2 {
+            color: var(--secondary-color);
+            font-size: 20px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        h3 {
+            font-size: 16px;
+            color: var(--dark-gray);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .panel {
+            background-color: var(--white);
+            border: 1px solid var(--medium-gray);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--medium-gray);
+            border-radius: 6px;
+            margin-bottom: 15px;
+            background-color: var(--white);
+            cursor: pointer;
+        }
+
+        input[type="file"]:hover {
+            border-color: var(--primary-color);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: var(--white);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        button:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        button.secondary {
+            background-color: var(--medium-gray);
+            color: var(--secondary-color);
+        }
+
+        button.secondary:hover {
+            background-color: #d2dce6;
+        }
+
+        canvas {
+            max-width: 100%;
+            border: 1px solid var(--medium-gray);
+            border-radius: 6px;
+            margin: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            background-color: var(--white);
+        }
+
+        .file-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .file-info span {
+            background-color: var(--light-gray);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .comparison-container {
+            position: relative;
+            display: inline-block;
+            line-height: 0;
+            width: 100%;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .comparison-slider {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: var(--primary-color);
+            opacity: 0.9;
+            cursor: ew-resize;
+            z-index: 10;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 2px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+
+        #previewCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .quality-indicator {
+            height: 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            background: linear-gradient(to right, var(--error-color), var(--warning-color), var(--success-color));
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quality-indicator-fill {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background-color: rgba(255,255,255,0.3);
+            width: 0%;
+        }
+
+        .metrics {
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .metrics div {
+            margin-bottom: 8px;
+        }
+
+        .psnr-value {
+            font-weight: bold;
+            color: var(--success-color);
+        }
+
+        .ssim-value {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .vmaf-value {
+            font-weight: bold;
+            color: #9b59b6;
+        }
+
+        .compression-log {
+            flex: 1;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            background-color: var(--black);
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #2d3748;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+
+        .log-success {
+            color: var(--success-color);
+        }
+
+        .log-warning {
+            color: var(--warning-color);
+        }
+
+        .log-error {
+            color: var(--error-color);
+        }
+
+        .log-info {
+            color: var(--info-color);
+        }
+
+        .preview-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 13px;
+            z-index: 5;
+        }
+
+        .preview-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .progress-container {
+            height: 6px;
+            background-color: var(--medium-gray);
+            border-radius: 3px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--primary-color);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .stat-card {
+            background-color: var(--light-gray);
+            border: 1px solid var(--medium-gray);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .stat-card h3 {
+            margin-top: 0;
+            font-size: 14px;
+            color: var(--dark-gray);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        .format-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            background-color: var(--primary-color);
+            color: white;
+            margin-left: 5px;
+        }
+
+        .advanced-options {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: var(--light-gray);
+            border-radius: 8px;
+            border: 1px solid var(--medium-gray);
+        }
+
+        .advanced-options label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .advanced-options select, 
+        .advanced-options input[type="range"] {
+            width: 100%;
+            margin-bottom: 15px;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid var(--medium-gray);
+            background-color: var(--white);
+        }
+
+        .slider-value {
+            display: inline-block;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
+        .format-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .format-option {
+            display: flex;
+            align-items: center;
+        }
+
+        .format-option input {
+            margin-right: 5px;
+        }
+
+        .log-title {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 18px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--dark-gray);
+        }
+
+        .empty-state p {
+            margin-top: 10px;
+            color: var(--dark-gray);
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .log-sidebar {
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid var(--medium-gray);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <h1>Advanced Image Compressor Pro</h1>
+            
+            <!-- Upload Panel -->
+            <div class="panel">
+                <div class="panel-title">
+                    <h2>1. Upload Image</h2>
+                </div>
+                <input type="file" id="imageInput" accept="image/*">
+                <div class="preview-container">
+                    <span class="preview-label">Original Preview</span>
+                    <canvas id="originalCanvas"></canvas>
+                </div>
+                <div class="file-info">
+                    <span id="originalSize">Size: 0 MB</span>
+                    <span id="originalDimensions">Dimensions: 0x0 px</span>
+                    <span id="originalFormat">Format: Unknown</span>
+                </div>
+            </div>
+            
+            <!-- Compression Panel -->
+            <div class="panel">
+                <div class="panel-title">
+                    <h2>2. Automatic Compression</h2>
+                </div>
+                <div class="advanced-options">
+                    <label for="targetQuality">Quality Level:
+                        <input type="range" id="targetQuality" min="70" max="100" value="95">
+                        <span class="slider-value" id="targetQualityValue">95%</span>
+                    </label>
+                    
+                    <label>Formats to try:</label>
+                    <div class="format-options">
+                        <div class="format-option">
+                            <input type="checkbox" id="formatWebP" checked>
+                            <label for="formatWebP">WebP</label>
+                        </div>
+                        <div class="format-option">
+                            <input type="checkbox" id="formatAVIF" checked>
+                            <label for="formatAVIF">AVIF</label>
+                        </div>
+                        <div class="format-option">
+                            <input type="checkbox" id="formatJPEG" checked>
+                            <label for="formatJPEG">JPEG</label>
+                        </div>
+                        <div class="format-option">
+                            <input type="checkbox" id="formatPNG" checked>
+                            <label for="formatPNG">PNG</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="progress-container" id="progressContainer" style="display: none;">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <button id="compressBtn" disabled>Start Advanced Compression</button>
+            </div>
+            
+            <!-- Results Panel -->
+            <div class="panel">
+                <div class="panel-title">
+                    <h2>3. Compression Results</h2>
+                </div>
+                <div id="compressionResults" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Original Size</h3>
+                            <div class="stat-value" id="originalSizeStat">0 KB</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Compressed Size</h3>
+                            <div class="stat-value" id="compressedSizeStat">0 KB</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Reduction</h3>
+                            <div class="stat-value" id="reductionStat">0%</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Quality</h3>
+                            <div class="stat-value" id="qualityStat">100%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="metrics">
+                        <div>PSNR: <span id="psnrValue">-</span> dB <small>(Values > 40dB are excellent)</small></div>
+                        <div>SSIM: <span id="ssimValue">-</span> <small>(1.0 is perfect)</small></div>
+                        <div>VMAF: <span id="vmafValue">-</span> <small>(100 is perfect)</small></div>
+                        <div class="quality-indicator">
+                            <div class="quality-indicator-fill" id="qualityIndicator"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="comparison-container" id="comparisonContainer">
+                        <canvas id="originalComparison"></canvas>
+                        <canvas id="previewCanvas"></canvas>
+                        <div class="comparison-slider" id="comparisonSlider"></div>
+                    </div>
+                    
+                    <button id="downloadBtn" disabled>Download Compressed Image</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Log Sidebar -->
+        <div class="log-sidebar">
+            <h3 class="log-title">Compression Log</h3>
+            <div class="compression-log" id="compressionLog">
+                <div class="empty-state">
+                    <p>No compression activity yet</p>
+                </div>
+                <div id="logEntries"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const elements = {
+            // Input
+            imageInput: document.getElementById('imageInput'),
+            originalCanvas: document.getElementById('originalCanvas'),
+            originalCtx: document.getElementById('originalCanvas').getContext('2d'),
+            originalSize: document.getElementById('originalSize'),
+            originalDimensions: document.getElementById('originalDimensions'),
+            originalFormat: document.getElementById('originalFormat'),
+            
+            // Compression
+            compressBtn: document.getElementById('compressBtn'),
+            targetQuality: document.getElementById('targetQuality'),
+            targetQualityValue: document.getElementById('targetQualityValue'),
+            formatWebP: document.getElementById('formatWebP'),
+            formatAVIF: document.getElementById('formatAVIF'),
+            formatJPEG: document.getElementById('formatJPEG'),
+            formatPNG: document.getElementById('formatPNG'),
+            progressContainer: document.getElementById('progressContainer'),
+            progressBar: document.getElementById('progressBar'),
+            compressionLog: document.getElementById('compressionLog'),
+            logEntries: document.getElementById('logEntries'),
+            
+            // Results
+            compressionResults: document.getElementById('compressionResults'),
+            originalSizeStat: document.getElementById('originalSizeStat'),
+            compressedSizeStat: document.getElementById('compressedSizeStat'),
+            reductionStat: document.getElementById('reductionStat'),
+            qualityStat: document.getElementById('qualityStat'),
+            psnrValue: document.getElementById('psnrValue'),
+            ssimValue: document.getElementById('ssimValue'),
+            vmafValue: document.getElementById('vmafValue'),
+            qualityIndicator: document.getElementById('qualityIndicator'),
+            comparisonContainer: document.getElementById('comparisonContainer'),
+            comparisonSlider: document.getElementById('comparisonSlider'),
+            originalComparison: document.getElementById('originalComparison'),
+            originalComparisonCtx: document.getElementById('originalComparison').getContext('2d'),
+            previewCanvas: document.getElementById('previewCanvas'),
+            previewCtx: document.getElementById('previewCanvas').getContext('2d'),
+            downloadBtn: document.getElementById('downloadBtn')
+        };
+
+        // Global State
+        let state = {
+            originalImage: null,
+            originalImageBlob: null,
+            originalFileSize: 0,
+            originalImageType: 'unknown',
+            optimizedBlob: null,
+            compressionAttempts: [],
+            bestAttempt: null,
+            originalImageData: null
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            setupComparisonSlider();
+            setupSliders();
+        });
+
+        /** Set up event listeners */
+        function setupEventListeners() {
+            // Original image upload
+            elements.imageInput.addEventListener('change', handleImageUpload);
+            
+            // Compression button
+            elements.compressBtn.addEventListener('click', startAdvancedCompression);
+            
+            // Download compressed image
+            elements.downloadBtn.addEventListener('click', downloadOptimizedImage);
+        }
+
+        /** Set up sliders */
+        function setupSliders() {
+            // Quality slider
+            elements.targetQuality.addEventListener('input', function() {
+                elements.targetQualityValue.textContent = `${this.value}%`;
+            });
+        }
+
+        /** Set up comparison slider */
+        function setupComparisonSlider() {
+            let isDragging = false;
+            
+            elements.comparisonSlider.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                updateSliderPosition(e.clientX);
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    updateSliderPosition(e.clientX);
+                    e.preventDefault();
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            function updateSliderPosition(x) {
+                const container = elements.comparisonContainer.getBoundingClientRect();
+                const position = Math.max(0, Math.min(1, (x - container.left) / container.width));
+                elements.comparisonSlider.style.left = `${position * 100}%`;
+                
+                // Apply clip path to preview canvas
+                elements.previewCanvas.style.clipPath = `polygon(0 0, ${position * 100}% 0, ${position * 100}% 100%, 0 100%)`;
+            }
+        }
+
+        /** Handle image upload */
+        async function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                resetUI();
+                
+                state.originalFileSize = file.size;
+                state.originalImageBlob = file;
+                
+                // Show file info
+                elements.originalSize.textContent = `Size: ${formatFileSize(file.size)}`;
+                
+                // Load image to canvas
+                const img = await loadImage(file);
+                state.originalImage = img;
+                drawImageToCanvas(img, elements.originalCanvas, elements.originalCtx);
+                
+                // Copy to comparison canvas
+                elements.originalComparison.width = img.width;
+                elements.originalComparison.height = img.height;
+                elements.originalComparisonCtx.drawImage(img, 0, 0);
+                
+                // Show dimensions
+                elements.originalDimensions.textContent = `Dimensions: ${img.width}x${img.height} px`;
+                
+                // Detect image type
+                state.originalImageType = detectImageType(file);
+                elements.originalFormat.textContent = `Format: ${state.originalImageType.toUpperCase()}`;
+                
+                // Enable compression button
+                elements.compressBtn.disabled = false;
+                
+            } catch (error) {
+                console.error('Error loading image:', error);
+                addLogEntry(`Error loading image: ${error.message}`, 'error');
+                alert('Error loading image: ' + error.message);
+            }
+        }
+
+        /** Reset UI to initial state */
+        function resetUI() {
+            elements.compressBtn.disabled = true;
+            elements.downloadBtn.disabled = true;
+            elements.compressionResults.style.display = 'none';
+            elements.logEntries.innerHTML = '';
+            elements.progressContainer.style.display = 'none';
+            elements.progressBar.style.width = '0%';
+            document.querySelector('.compression-log .empty-state').style.display = 'block';
+        }
+
+        /** Format file size for display */
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return `${bytes} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+            if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+            return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+        }
+
+        /** Detect image type based on file signature */
+        function detectImageType(file) {
+            const name = file.name.toLowerCase();
+            if (name.endsWith('.png')) return 'png';
+            if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'jpeg';
+            if (name.endsWith('.webp')) return 'webp';
+            if (name.endsWith('.gif')) return 'gif';
+            if (name.endsWith('.bmp')) return 'bmp';
+            if (name.endsWith('.avif')) return 'avif';
+            return 'unknown';
+        }
+
+        /** Start advanced compression process */
+        async function startAdvancedCompression() {
+            try {
+                // Setup UI
+                elements.compressBtn.disabled = true;
+                elements.compressBtn.textContent = 'Optimizing...';
+                elements.progressContainer.style.display = 'block';
+                document.querySelector('.compression-log .empty-state').style.display = 'none';
+                
+                addLogEntry('Starting advanced image analysis...', 'info');
+                
+                // Analyze image to determine best strategy
+                const analysis = await analyzeImageAdvanced(state.originalImage);
+                addLogEntry(`Analysis complete: ${analysis.type} (${analysis.colors} colors, ${analysis.details})`, 'success');
+                
+                // Determine target quality
+                const targetQuality = parseInt(elements.targetQuality.value) / 100;
+                
+                addLogEntry(`Settings: Quality ${Math.round(targetQuality * 100)}%`, 'info');
+                
+                // Perform advanced compression
+                await performAdvancedCompression(analysis, targetQuality);
+                
+                // Show final results
+                showFinalResults();
+                
+            } catch (error) {
+                console.error('Compression error:', error);
+                addLogEntry(`Compression error: ${error.message}`, 'error');
+                alert('Error optimizing image: ' + error.message);
+            } finally {
+                elements.compressBtn.disabled = false;
+                elements.compressBtn.textContent = 'Start Advanced Compression';
+            }
+        }
+
+        /** Analyze image to determine important characteristics (improved version) */
+        async function analyzeImageAdvanced(img) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Count unique colors and color frequency
+                const colorFrequency = new Map();
+                let transparentPixels = 0;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i+1];
+                    const b = data[i+2];
+                    const a = data[i+3];
+                    
+                    if (a < 255) transparentPixels++;
+                    
+                    const colorKey = `${r},${g},${b},${a}`;
+                    colorFrequency.set(colorKey, (colorFrequency.get(colorKey) || 0) + 1);
+                }
+                
+                // Detect edges and textures (improved version)
+                let edgeCount = 0;
+                let textureScore = 0;
+                const edgeThreshold = 30;
+                const textureThreshold = 15;
+                
+                // Use Sobel kernel for edge detection
+                const sobelKernelX = [
+                    [-1, 0, 1],
+                    [-2, 0, 2],
+                    [-1, 0, 1]
+                ];
+                
+                const sobelKernelY = [
+                    [-1, -2, -1],
+                    [0, 0, 0],
+                    [1, 2, 1]
+                ];
+                
+                for (let y = 1; y < canvas.height - 1; y++) {
+                    for (let x = 1; x < canvas.width - 1; x++) {
+                        let gxR = 0, gyR = 0;
+                        let gxG = 0, gyG = 0;
+                        let gxB = 0, gyB = 0;
+                        
+                        // Apply Sobel kernel
+                        for (let ky = -1; ky <= 1; ky++) {
+                            for (let kx = -1; kx <= 1; kx++) {
+                                const idx = ((y + ky) * canvas.width + (x + kx)) * 4;
+                                const weightX = sobelKernelX[ky + 1][kx + 1];
+                                const weightY = sobelKernelY[ky + 1][kx + 1];
+                                
+                                gxR += data[idx] * weightX;
+                                gyR += data[idx] * weightY;
+                                
+                                gxG += data[idx + 1] * weightX;
+                                gyG += data[idx + 1] * weightY;
+                                
+                                gxB += data[idx + 2] * weightX;
+                                gyB += data[idx + 2] * weightY;
+                            }
+                        }
+                        
+                        // Calculate gradient magnitude
+                        const magnitudeR = Math.sqrt(gxR * gxR + gyR * gyR);
+                        const magnitudeG = Math.sqrt(gxG * gxG + gyG * gyG);
+                        const magnitudeB = Math.sqrt(gxB * gxB + gyB * gyB);
+                        
+                        const avgMagnitude = (magnitudeR + magnitudeG + magnitudeB) / 3;
+                        
+                        if (avgMagnitude > edgeThreshold) {
+                            edgeCount++;
+                        } else if (avgMagnitude > textureThreshold) {
+                            textureScore += avgMagnitude;
+                        }
+                    }
+                }
+                
+                // Calculate image entropy (measure of complexity)
+                let entropy = 0;
+                const totalPixels = canvas.width * canvas.height;
+                for (const [color, count] of colorFrequency) {
+                    const probability = count / totalPixels;
+                    entropy -= probability * Math.log2(probability);
+                }
+                
+                // Determine image type based on advanced analysis
+                let type = 'photograph';
+                const colorCount = colorFrequency.size;
+                const edgeDensity = edgeCount / totalPixels;
+                const textureDensity = textureScore / totalPixels;
+                const transparencyRatio = transparentPixels / totalPixels;
+                
+                if (colorCount < 256 && edgeDensity > 0.05) {
+                    type = 'graphic/vector';
+                } else if (colorCount < 100 && edgeDensity > 0.1) {
+                    type = 'text/graphic';
+                } else if (transparencyRatio > 0.1) {
+                    type = 'transparency';
+                } else if (textureDensity > 5) {
+                    type = 'high texture';
+                }
+                
+                // Calculate detail level based on analysis
+                let details = 'low detail';
+                if (edgeDensity > 0.1 || entropy > 7) {
+                    details = 'high detail';
+                } else if (edgeDensity > 0.05 || entropy > 5) {
+                    details = 'medium detail';
+                }
+                
+                resolve({
+                    type,
+                    colors: colorCount,
+                    edges: edgeCount,
+                    edgeDensity,
+                    textureScore,
+                    entropy,
+                    transparencyRatio,
+                    details,
+                    colorFrequency
+                });
+            });
+        }
+
+        /** Perform advanced compression based on analysis */
+        async function performAdvancedCompression(analysis, targetQuality) {
+            const maxAttempts = 5; // Attempts to find best fit
+            let attempts = [];
+            
+            // Determine formats to try based on analysis and user selection
+            let formatsToTry = [];
+            if (elements.formatWebP.checked) formatsToTry.push('webp');
+            if (elements.formatAVIF.checked) formatsToTry.push('avif');
+            if (elements.formatJPEG.checked) formatsToTry.push('jpeg');
+            if (elements.formatPNG.checked) formatsToTry.push('png');
+            
+            if (formatsToTry.length === 0) {
+                throw new Error('You must select at least one format to compress');
+            }
+            
+            addLogEntry(`Trying formats: ${formatsToTry.join(', ')}`, 'info');
+            
+            // Improved binary search algorithm to find best compression
+            for (const format of formatsToTry) {
+                addLogEntry(`Testing format: ${format.toUpperCase()}`, 'info');
+                
+                let low = 0.7; // Minimum initial quality
+                let high = 1.0;
+                let bestAttemptForFormat = null;
+                
+                for (let i = 0; i < maxAttempts; i++) {
+                    const quality = (low + high) / 2;
+                    updateProgress((i / maxAttempts) * 30 + (formatsToTry.indexOf(format) * 20));
+                    
+                    addLogEntry(`Attempt ${i+1}: Compressing with quality ${Math.round(quality * 100)}% (${format.toUpperCase()})...`, 'info');
+                    
+                    try {
+                        const result = await compressImageAdvanced(
+                            state.originalImageBlob, 
+                            quality, 
+                            format,
+                            analysis
+                        );
+                        
+                        // Calculate quality metrics
+                        const compressedImg = await loadImage(result.blob);
+                        const metrics = await calculateAdvancedQualityMetrics(
+                            state.originalImage, 
+                            compressedImg
+                        );
+                        
+                        const attempt = {
+                            quality: Math.round(quality * 100),
+                            format,
+                            blob: result.blob,
+                            size: result.blob.size,
+                            psnr: metrics.psnr,
+                            ssim: metrics.ssim,
+                            vmaf: metrics.vmaf,
+                            compressionRatio: (result.blob.size / state.originalFileSize) * 100,
+                            score: calculateCompressionScore(metrics, result.blob.size, state.originalFileSize, targetQuality)
+                        };
+                        
+                        attempts.push(attempt);
+                        
+                        addLogEntry(`Attempt ${i+1} complete: ${formatFileSize(attempt.size)} (PSNR: ${attempt.psnr.toFixed(2)} dB, SSIM: ${attempt.ssim.toFixed(3)}, VMAF: ${attempt.vmaf.toFixed(1)})`, 'success');
+                        
+                        // Show preview of this attempt
+                        showCompressionPreview(attempt.blob, attempt.psnr, attempt.ssim, attempt.vmaf);
+                        
+                        // Adjust binary search based on target quality
+                        if (metrics.ssim >= targetQuality * 1.05) {
+                            // We can try more compression
+                            high = quality;
+                            bestAttemptForFormat = attempt;
+                        } else if (metrics.ssim >= targetQuality * 0.95) {
+                            // Close to target, stop
+                            bestAttemptForFormat = attempt;
+                            addLogEntry(`Target quality reached (SSIM: ${metrics.ssim.toFixed(3)}). Stopping optimization for this format.`, 'success');
+                            break;
+                        } else {
+                            // Need better quality
+                            low = quality;
+                        }
+                        
+                    } catch (error) {
+                        addLogEntry(`Error in attempt ${i+1}: ${error.message}`, 'error');
+                        console.error(`Error in attempt ${i+1}:`, error);
+                        // Adjust binary search in case of error
+                        high = quality;
+                    }
+                }
+                
+                if (bestAttemptForFormat) {
+                    attempts.push(bestAttemptForFormat);
+                }
+            }
+            
+            if (attempts.length === 0) {
+                throw new Error('Could not complete any valid compression.');
+            }
+            
+            // Select best attempt based on scoring system
+            attempts.sort((a, b) => b.score - a.score);
+            
+            state.bestAttempt = attempts[0];
+            state.compressionAttempts = attempts;
+            state.optimizedBlob = state.bestAttempt.blob;
+            
+            addLogEntry(`Best compression selected: ${formatFileSize(state.bestAttempt.size)} (${state.bestAttempt.format.toUpperCase()}, SSIM: ${state.bestAttempt.ssim.toFixed(3)}, VMAF: ${state.bestAttempt.vmaf.toFixed(1)})`, 'success');
+            updateProgress(100);
+        }
+
+        /** Calculate a score to evaluate compression */
+        function calculateCompressionScore(metrics, compressedSize, originalSize, targetQuality) {
+            // Weight quality more than size
+            const sizeRatio = compressedSize / originalSize;
+            
+            // Score based on quality metrics (SSIM and VMAF have more weight)
+            const qualityScore = (metrics.ssim * 0.6) + (metrics.vmaf / 100 * 0.4);
+            
+            // Proximity to target quality factor
+            const qualityProximity = 1 - Math.abs(metrics.ssim - targetQuality);
+            
+            // Combine quality, size and proximity to target
+            return (qualityScore * 0.6) + ((1 - sizeRatio) * 0.3) + (qualityProximity * 0.1);
+        }
+
+        /** Compress an image with advanced techniques */
+        async function compressImageAdvanced(blob, quality, format, analysis) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Pre-processing based on analysis
+                    if (format === 'jpeg') {
+                        // Fill white background for images with transparency
+                        if (analysis.transparencyRatio > 0) {
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        }
+                        
+                        // Apply selective smoothing to reduce artifacts
+                        ctx.imageSmoothingQuality = 'high';
+                    }
+                    
+                    // Draw original image
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Post-processing to improve compression
+                    if (format !== 'png') {
+                        // Apply sharpening filter to compensate for losses (only if needed)
+                        if (quality < 0.9 && analysis.edgeDensity > 0.05) {
+                            applySharpeningFilter(ctx, canvas.width, canvas.height, 0.3);
+                        }
+                    }
+                    
+                    // Format-specific options
+                    let options;
+                    if (format === 'webp') {
+                        options = {
+                            quality: quality * 100,
+                            alphaQuality: quality * 100,
+                            lossless: false,
+                            method: 6, // Slower method but better compression
+                            preset: analysis.type === 'text/graphic' ? 'text' : 'photo',
+                            // Advanced WebP settings
+                            segments: 4,
+                            sns: 50,
+                            filter_strength: 30,
+                            filter_sharpness: 0,
+                            filter_type: 1,
+                            autofilter: true,
+                            pass: 3,
+                            preprocessing: 1
+                        };
+                    } else if (format === 'avif') {
+                        options = {
+                            quality: quality * 100,
+                            speed: 5, // Slower for better compression
+                            chromaSubsampling: '4:2:0', // Chroma subsampling for better compression
+                            // Advanced AVIF settings
+                            tileRowsLog2: 1,
+                            tileColsLog2: 1,
+                            sharpness: 2,
+                            denoiseLevel: 5,
+                            tune: 'ssim'
+                        };
+                    } else if (format === 'jpeg') {
+                        options = {
+                            quality: quality * 100,
+                            chromaSubsampling: true, // Enable chroma subsampling
+                            mozjpeg: true, // Use MozJPEG optimizations if available
+                            // Advanced JPEG settings
+                            trellisMultipass: true,
+                            trellisOptZero: true,
+                            trellisOptTable: true,
+                            overshootDeringing: true,
+                            optimizeScans: true,
+                            quantizationTable: 3,
+                            smooth: analysis.type === 'photograph' ? 20 : 0
+                        };
+                    } else { // PNG
+                        options = {
+                            quality: 1,
+                            compressionLevel: Math.floor((1 - quality) * 9), // 0-9
+                            // Advanced PNG settings
+                            filters: analysis.type === 'text/graphic' ? 0 : 5, // Adaptive filtering
+                            palette: analysis.colors <= 256, // Use palette if <= 256 colors
+                            dither: 0.7 // Dithering for better quality with palette
+                        };
+                    }
+                    
+                    canvas.toBlob(function(optimizedBlob) {
+                        if (!optimizedBlob) {
+                            reject(new Error('Could not generate image blob'));
+                            return;
+                        }
+                        resolve({ blob: optimizedBlob });
+                    }, `image/${format}`, options);
+                };
+                img.onerror = function() {
+                    reject(new Error('Error loading image for compression'));
+                };
+                img.src = URL.createObjectURL(blob);
+            });
+        }
+
+        /** Apply sharpening filter to canvas */
+        function applySharpeningFilter(ctx, width, height, amount) {
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+            
+            // Sharpening kernel (laplacian)
+            const kernel = [
+                [-1, -1, -1],
+                [-1,  9, -1],
+                [-1, -1, -1]
+            ];
+            
+            const tempData = new Uint8ClampedArray(data.length);
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    for (let c = 0; c < 3; c++) { // For each RGB channel (not alpha)
+                        let sum = 0;
+                        
+                        // Apply kernel
+                        for (let ky = -1; ky <= 1; ky++) {
+                            for (let kx = -1; kx <= 1; kx++) {
+                                const idx = ((y + ky) * width + (x + kx)) * 4 + c;
+                                const weight = kernel[ky + 1][kx + 1];
+                                sum += data[idx] * weight;
+                            }
+                        }
+                        
+                        // Mix with original based on amount
+                        const originalIdx = (y * width + x) * 4 + c;
+                        const originalValue = data[originalIdx];
+                        const sharpenedValue = originalValue * (1 - amount) + sum * amount;
+                        
+                        // Ensure value is in 0-255 range
+                        tempData[originalIdx] = Math.max(0, Math.min(255, sharpenedValue));
+                    }
+                    
+                    // Keep alpha channel unchanged
+                    const alphaIdx = (y * width + x) * 4 + 3;
+                    tempData[alphaIdx] = data[alphaIdx];
+                }
+            }
+            
+            // Apply changes
+            imageData.data.set(tempData);
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        /** Update progress bar */
+        function updateProgress(percent) {
+            elements.progressBar.style.width = `${percent}%`;
+        }
+
+        /** Show compression preview */
+        async function showCompressionPreview(blob, psnr, ssim, vmaf) {
+            const img = await loadImage(blob);
+            
+            // Ensure canvas has correct size
+            elements.previewCanvas.width = img.width;
+            elements.previewCanvas.height = img.height;
+            elements.previewCtx.drawImage(img, 0, 0, img.width, img.height);
+            
+            // Update metrics
+            elements.psnrValue.textContent = psnr === Infinity ? '¡Þ' : psnr.toFixed(2);
+            elements.ssimValue.textContent = ssim.toFixed(3);
+            elements.vmafValue.textContent = vmaf.toFixed(1);
+            
+            // Update quality indicator (based on SSIM and VMAF)
+            const qualityScore = (ssim * 0.6 + vmaf / 100 * 0.4) * 100;
+            updateQualityIndicator(qualityScore);
+            
+            // Force redraw of comparison slider
+            updateComparisonSlider();
+        }
+
+        /** Update visual quality indicator */
+        function updateQualityIndicator(quality) {
+            const indicator = elements.qualityIndicator;
+            indicator.style.width = `${100 - quality}%`;
+            
+            if (quality >= 95) {
+                indicator.style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
+            } else if (quality >= 85) {
+                indicator.style.backgroundColor = 'rgba(243, 156, 18, 0.3)';
+            } else {
+                indicator.style.backgroundColor = 'rgba(231, 76, 60, 0.3)';
+            }
+        }
+
+        /** Show final compression results */
+        function showFinalResults() {
+            if (!state.bestAttempt) {
+                throw new Error('No compression results to show');
+            }
+            
+            const originalSizeKB = state.originalFileSize / 1024;
+            const compressedSizeKB = state.bestAttempt.size / 1024;
+            const ratio = (compressedSizeKB / originalSizeKB) * 100;
+            const savings = 100 - ratio;
+            
+            // Show statistics
+            elements.originalSizeStat.textContent = formatFileSize(state.originalFileSize);
+            elements.compressedSizeStat.textContent = formatFileSize(state.bestAttempt.size);
+            elements.reductionStat.textContent = `${savings.toFixed(1)}%`;
+            elements.qualityStat.textContent = `${(state.bestAttempt.ssim * 100).toFixed(1)}%`;
+            
+            // Show results
+            elements.compressionResults.style.display = 'block';
+            
+            // Enable download button
+            elements.downloadBtn.disabled = false;
+            
+            // Show final preview
+            showCompressionPreview(
+                state.bestAttempt.blob, 
+                state.bestAttempt.psnr, 
+                state.bestAttempt.ssim,
+                state.bestAttempt.vmaf
+            );
+        }
+
+        /** Calculate advanced quality metrics between two images */
+        async function calculateAdvancedQualityMetrics(originalImg, compressedImg) {
+            // Create canvas for both images
+            const canvas1 = document.createElement('canvas');
+            canvas1.width = originalImg.width;
+            canvas1.height = originalImg.height;
+            const ctx1 = canvas1.getContext('2d');
+            ctx1.drawImage(originalImg, 0, 0);
+            
+            const canvas2 = document.createElement('canvas');
+            canvas2.width = compressedImg.width;
+            canvas2.height = compressedImg.height;
+            const ctx2 = canvas2.getContext('2d');
+            ctx2.drawImage(compressedImg, 0, 0);
+            
+            // Ensure both images have same size
+            if (canvas1.width !== canvas2.width || canvas1.height !== canvas2.height) {
+                throw new Error('Images must have same dimensions to compare quality');
+            }
+            
+            // Get image data
+            const imageData1 = ctx1.getImageData(0, 0, canvas1.width, canvas1.height);
+            const imageData2 = ctx2.getImageData(0, 0, canvas2.width, canvas2.height);
+            
+            // Calculate enhanced PSNR
+            const psnr = calculateEnhancedPSNR(imageData1, imageData2);
+            
+            // Calculate enhanced SSIM
+            const ssim = calculateEnhancedSSIM(imageData1, imageData2);
+            
+            // Calculate simplified VMAF (not real VMAF, but an approximation)
+            const vmaf = calculateSimplifiedVMAF(imageData1, imageData2);
+            
+            return { psnr, ssim, vmaf };
+        }
+
+        /** Calculate enhanced PSNR between two ImageData */
+        function calculateEnhancedPSNR(img1, img2) {
+            const width = img1.width;
+            const height = img1.height;
+            const data1 = img1.data;
+            const data2 = img2.data;
+            
+            let mseR = 0, mseG = 0, mseB = 0;
+            let max = 255; // For 8-bit per channel images
+            
+            for (let i = 0; i < data1.length; i += 4) {
+                const r1 = data1[i];
+                const g1 = data1[i+1];
+                const b1 = data1[i+2];
+                
+                const r2 = data2[i];
+                const g2 = data2[i+1];
+                const b2 = data2[i+2];
+                
+                mseR += Math.pow(r1 - r2, 2);
+                mseG += Math.pow(g1 - g2, 2);
+                mseB += Math.pow(b1 - b2, 2);
+            }
+            
+            const pixels = width * height;
+            mseR /= pixels;
+            mseG /= pixels;
+            mseB /= pixels;
+            
+            // Weighted average MSE (more weight to green, similar to human eye)
+            const mse = (0.299 * mseR + 0.587 * mseG + 0.114 * mseB);
+            
+            if (mse === 0) return Infinity; // Identical images
+            
+            return 10 * Math.log10((max * max) / mse);
+        }
+
+        /** Calculate enhanced SSIM between two ImageData */
+        function calculateEnhancedSSIM(img1, img2) {
+            const width = img1.width;
+            const height = img1.height;
+            const data1 = img1.data;
+            const data2 = img2.data;
+            
+            // SSIM parameters
+            const K1 = 0.01;
+            const K2 = 0.03;
+            const L = 255; // Dynamic range
+            const C1 = Math.pow(K1 * L, 2);
+            const C2 = Math.pow(K2 * L, 2);
+            const C3 = C2 / 2;
+            
+            let sumSSIM = 0;
+            const windowSize = 8;
+            const windowsX = Math.floor(width / windowSize);
+            const windowsY = Math.floor(height / windowSize);
+            const totalWindows = windowsX * windowsY;
+            
+            // Calculate SSIM in windows for better performance
+            for (let y = 0; y < windowsY; y++) {
+                for (let x = 0; x < windowsX; x++) {
+                    let sum1 = 0, sum2 = 0, sum12 = 0, sum1sq = 0, sum2sq = 0;
+                    let count = 0;
+                    
+                    // Calculate window statistics for each channel
+                    let sumR1 = 0, sumR2 = 0, sumR12 = 0, sumR1sq = 0, sumR2sq = 0;
+                    let sumG1 = 0, sumG2 = 0, sumG12 = 0, sumG1sq = 0, sumG2sq = 0;
+                    let sumB1 = 0, sumB2 = 0, sumB12 = 0, sumB1sq = 0, sumB2sq = 0;
+                    
+                    for (let j = 0; j < windowSize; j++) {
+                        for (let i = 0; i < windowSize; i++) {
+                            const px = x * windowSize + i;
+                            const py = y * windowSize + j;
+                            
+                            if (px >= width || py >= height) continue;
+                            
+                            const idx = (py * width + px) * 4;
+                            const r1 = data1[idx];
+                            const g1 = data1[idx+1];
+                            const b1 = data1[idx+2];
+                            
+                            const r2 = data2[idx];
+                            const g2 = data2[idx+1];
+                            const b2 = data2[idx+2];
+                            
+                            // Convert to luminance (approximation)
+                            const l1 = 0.299 * r1 + 0.587 * g1 + 0.114 * b1;
+                            const l2 = 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+                            
+                            sum1 += l1;
+                            sum2 += l2;
+                            sum12 += l1 * l2;
+                            sum1sq += l1 * l1;
+                            sum2sq += l2 * l2;
+                            
+                            // Per-channel statistics
+                            sumR1 += r1; sumR2 += r2; sumR12 += r1 * r2; sumR1sq += r1 * r1; sumR2sq += r2 * r2;
+                            sumG1 += g1; sumG2 += g2; sumG12 += g1 * g2; sumG1sq += g1 * g1; sumG2sq += g2 * g2;
+                            sumB1 += b1; sumB2 += b2; sumB12 += b1 * b2; sumB1sq += b1 * b1; sumB2sq += b2 * b2;
+                            
+                            count++;
+                        }
+                    }
+                    
+                    if (count === 0) continue;
+                    
+                    // Calculate SSIM for luminance
+                    const mu1 = sum1 / count;
+                    const mu2 = sum2 / count;
+                    const sigma1 = Math.sqrt(Math.max(0, sum1sq / count - mu1 * mu1));
+                    const sigma2 = Math.sqrt(Math.max(0, sum2sq / count - mu2 * mu2));
+                    const sigma12 = sum12 / count - mu1 * mu2;
+                    
+                    const luminance = (2 * mu1 * mu2 + C1) / (mu1 * mu1 + mu2 * mu2 + C1);
+                    const contrast = (2 * sigma1 * sigma2 + C2) / (sigma1 * sigma1 + sigma2 * sigma2 + C2);
+                    const structure = (sigma12 + C3) / (sigma1 * sigma2 + C3);
+                    
+                    const windowSSIM = luminance * contrast * structure;
+                    
+                    // Calculate SSIM for each color channel
+                    const ssimR = calculateChannelSSIM(sumR1, sumR2, sumR12, sumR1sq, sumR2sq, count, C1, C2, C3);
+                    const ssimG = calculateChannelSSIM(sumG1, sumG2, sumG12, sumG1sq, sumG2sq, count, C1, C2, C3);
+                    const ssimB = calculateChannelSSIM(sumB1, sumB2, sumB12, sumB1sq, sumB2sq, count, C1, C2, C3);
+                    
+                    // Combine luminance and color SSIM
+                    const combinedSSIM = (windowSSIM * 0.8 + (ssimR + ssimG + ssimB) / 3 * 0.2);
+                    
+                    sumSSIM += combinedSSIM;
+                }
+            }
+            
+            // Average SSIM across all windows
+            return totalWindows > 0 ? sumSSIM / totalWindows : 1;
+        }
+
+        /** Calculate SSIM for a single channel */
+        function calculateChannelSSIM(sum1, sum2, sum12, sum1sq, sum2sq, count, C1, C2, C3) {
+            const mu1 = sum1 / count;
+            const mu2 = sum2 / count;
+            const sigma1 = Math.sqrt(Math.max(0, sum1sq / count - mu1 * mu1));
+            const sigma2 = Math.sqrt(Math.max(0, sum2sq / count - mu2 * mu2));
+            const sigma12 = sum12 / count - mu1 * mu2;
+            
+            const luminance = (2 * mu1 * mu2 + C1) / (mu1 * mu1 + mu2 * mu2 + C1);
+            const contrast = (2 * sigma1 * sigma2 + C2) / (sigma1 * sigma1 + sigma2 * sigma2 + C2);
+            const structure = (sigma12 + C3) / (sigma1 * sigma2 + C3);
+            
+            return luminance * contrast * structure;
+        }
+
+        /** Calculate simplified VMAF approximation */
+        function calculateSimplifiedVMAF(img1, img2) {
+            const width = img1.width;
+            const height = img1.height;
+            const data1 = img1.data;
+            const data2 = img2.data;
+            
+            // Parameters
+            const edgeWeight = 0.6; // More weight to edges
+            const textureWeight = 0.3;
+            const flatWeight = 0.1;
+            
+            let edgeScore = 0, textureScore = 0, flatScore = 0;
+            let edgePixels = 0, texturePixels = 0, flatPixels = 0;
+            
+            // Detect edges with Sobel
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    let gxR = 0, gyR = 0;
+                    let gxG = 0, gyG = 0;
+                    let gxB = 0, gyB = 0;
+                    
+                    // Apply Sobel kernel
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const idx = ((y + ky) * width + (x + kx)) * 4;
+                            const weightX = (kx === -1 ? -1 : (kx === 0 ? 0 : 1)) * (ky === 0 ? 2 : 1);
+                            const weightY = (ky === -1 ? -1 : (ky === 0 ? 0 : 1)) * (kx === 0 ? 2 : 1);
+                            
+                            gxR += data1[idx] * weightX;
+                            gyR += data1[idx] * weightY;
+                            
+                            gxG += data1[idx + 1] * weightX;
+                            gyG += data1[idx + 1] * weightY;
+                            
+                            gxB += data1[idx + 2] * weightX;
+                            gyB += data1[idx + 2] * weightY;
+                        }
+                    }
+                    
+                    // Gradient magnitude
+                    const magnitudeR = Math.sqrt(gxR * gxR + gyR * gyR);
+                    const magnitudeG = Math.sqrt(gxG * gxG + gyG * gyG);
+                    const magnitudeB = Math.sqrt(gxB * gxB + gyB * gyB);
+                    const avgMagnitude = (magnitudeR + magnitudeG + magnitudeB) / 3;
+                    
+                    // Classify pixel
+                    if (avgMagnitude > 30) { // Edge
+                        const idx = (y * width + x) * 4;
+                        const diffR = Math.abs(data1[idx] - data2[idx]);
+                        const diffG = Math.abs(data1[idx + 1] - data2[idx + 1]);
+                        const diffB = Math.abs(data1[idx + 2] - data2[idx + 2]);
+                        const avgDiff = (diffR + diffG + diffB) / 3;
+                        
+                        edgeScore += 1 - Math.min(1, avgDiff / 50); // Normalize
+                        edgePixels++;
+                    } else if (avgMagnitude > 10) { // Texture
+                        const idx = (y * width + x) * 4;
+                        const diffR = Math.abs(data1[idx] - data2[idx]);
+                        const diffG = Math.abs(data1[idx + 1] - data2[idx + 1]);
+                        const diffB = Math.abs(data1[idx + 2] - data2[idx + 2]);
+                        const avgDiff = (diffR + diffG + diffB) / 3;
+                        
+                        textureScore += 1 - Math.min(1, avgDiff / 30);
+                        texturePixels++;
+                    } else { // Flat area
+                        const idx = (y * width + x) * 4;
+                        const diffR = Math.abs(data1[idx] - data2[idx]);
+                        const diffG = Math.abs(data1[idx + 1] - data2[idx + 1]);
+                        const diffB = Math.abs(data1[idx + 2] - data2[idx + 2]);
+                        const avgDiff = (diffR + diffG + diffB) / 3;
+                        
+                        flatScore += 1 - Math.min(1, avgDiff / 10);
+                        flatPixels++;
+                    }
+                }
+            }
+            
+            // Calculate normalized scores
+            const normEdgeScore = edgePixels > 0 ? (edgeScore / edgePixels) : 1;
+            const normTextureScore = texturePixels > 0 ? (textureScore / texturePixels) : 1;
+            const normFlatScore = flatPixels > 0 ? (flatScore / flatPixels) : 1;
+            
+            // Combine scores with weights
+            const vmaf = (
+                normEdgeScore * edgeWeight + 
+                normTextureScore * textureWeight + 
+                normFlatScore * flatWeight
+            ) * 100;
+            
+            return Math.min(100, vmaf);
+        }
+
+        /** Download optimized image */
+        function downloadOptimizedImage() {
+            if (!state.optimizedBlob) {
+                alert('No optimized image to download');
+                return;
+            }
+            
+            // Determine extension based on best attempt format
+            let extension = state.bestAttempt.format;
+            if (extension === 'jpeg') extension = 'jpg';
+            
+            const url = URL.createObjectURL(state.optimizedBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `optimized_image_${Date.now()}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /** Load image from Blob */
+        function loadImage(blob) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => {
+                    console.error('Error loading image');
+                    reject(new Error('Error loading image. File may be corrupt.'));
+                };
+                img.src = URL.createObjectURL(blob);
+            });
+        }
+
+        /** Draw image to canvas */
+        function drawImageToCanvas(img, canvas, ctx) {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+        }
+
+        /** Update comparison slider */
+        function updateComparisonSlider() {
+            if (!elements.previewCanvas.width) return;
+            
+            const container = elements.comparisonContainer.getBoundingClientRect();
+            const position = 0.5; // Centered by default
+            
+            elements.comparisonSlider.style.left = `${position * 100}%`;
+            elements.previewCanvas.style.clipPath = `polygon(0 0, ${position * 100}% 0, ${position * 100}% 100%, 0 100%)`;
+        }
+
+        /** Add entry to compression log */
+        function addLogEntry(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            elements.logEntries.appendChild(entry);
+            
+            // Auto-scroll to bottom
+            elements.compressionLog.scrollTop = elements.compressionLog.scrollHeight;
+        }
+    </script>
+</body>
+</html>

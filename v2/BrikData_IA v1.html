@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compresor Ultra de Imágenes con IA</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- JSZip para compresión ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- CryptoJS para AES -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!-- ExifReader para metadatos -->
+    <script src="https://cdn.jsdelivr.net/npm/exifreader@3.16.0/dist/exif-reader.min.js"></script>
+    <!-- TensorFlow.js para IA -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+    <!-- Modelo de segmentación para IA -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0.0/dist/body-pix.min.js"></script>
+    <style>
+        .preview-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .preview-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        canvas {
+            max-width: 100%;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        .settings-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .file-info {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        .hash-prefix {
+            color: red;
+            font-weight: bold;
+        }
+        .alert-hash {
+            font-size: 13px;
+            margin-top: 5px;
+        }
+        #restoredPreviewContainer {
+            display: none;
+        }
+        #restoredInfo {
+            display: none;
+        }
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .comparison-container {
+            position: relative;
+            display: inline-block;
+            line-height: 0;
+            width: 100%;
+        }
+        .comparison-slider {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: #007bff;
+            opacity: 0.7;
+            cursor: ew-resize;
+            z-index: 10;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        #previewCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .exif-badge {
+            cursor: pointer;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        .zoom-view {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            border: 2px solid white;
+            border-radius: 50%;
+            pointer-events: none;
+            background-repeat: no-repeat;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            z-index: 100;
+            display: none;
+        }
+        .batch-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .batch-progress {
+            height: 5px;
+            margin-top: 5px;
+        }
+        .comparison-wrapper {
+            position: relative;
+            width: 100%;
+            height: auto;
+        }
+        #originalComparison {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .storage-info {
+            font-size: 12px;
+            color: #0d6efd;
+            margin-top: 5px;
+        }
+        .ultra-compression-info {
+            font-size: 12px;
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .ai-processing {
+            font-size: 12px;
+            color: #28a745;
+            font-weight: bold;
+        }
+        .heatmap-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            opacity: 0.5;
+            z-index: 5;
+        }
+        .ai-analysis-btn {
+            margin-top: 10px;
+        }
+        .ai-settings {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #17a2b8;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h1 class="h4 mb-0">Compresor Ultra de Imágenes con IA</h1>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-4">Comprime imágenes inteligentemente usando IA para máxima reducción manteniendo calidad en áreas importantes.</p>
+                        
+                        <!-- Panel de carga -->
+                        <div class="mb-5">
+                            <h2 class="h5 mb-3">1. Subir Imagen(es) Original(es)</h2>
+                            <div class="mb-3">
+                                <input type="file" id="imageInput" class="form-control" accept="image/*" multiple>
+                            </div>
+                            <div id="batchList" class="mb-3 d-none">
+                                <h6 class="mb-2">Archivos seleccionados:</h6>
+                                <div id="batchItemsContainer" class="mb-3"></div>
+                            </div>
+                            <div class="preview-container">
+                                <span class="preview-label">Vista Previa Original</span>
+                                <canvas id="originalCanvas" class="img-fluid"></canvas>
+                                <div id="originalExif" class="mt-2"></div>
+                            </div>
+                            <div class="file-info">
+                                <span id="originalSize">Tamaño: 0 MB</span> | 
+                                <span id="originalDimensions">Dimensiones: 0x0 px</span>
+                            </div>
+                            <button id="analyzeBtn" class="btn btn-info ai-analysis-btn d-none">
+                                <i class="bi bi-robot"></i> Analizar Imagen con IA
+                            </button>
+                            <div id="aiStatus" class="ai-processing d-none">
+                                <span id="aiStatusText">IA: Lista</span>
+                                <div class="progress mt-1">
+                                    <div id="aiProgress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Panel de configuración -->
+                        <div class="settings-panel mb-5">
+                            <h2 class="h5 mb-4">2. Configurar Compresión</h2>
+                            
+                            <div class="row">
+                                <!-- Columna de controles -->
+                                <div class="col-md-6">
+                                    <!-- Modo de compresión -->
+                                    <div class="mb-3">
+                                        <label for="compressionMode" class="form-label">Modo de compresión:</label>
+                                        <select class="form-select" id="compressionMode">
+                                            <option value="auto">Automático con IA (Recomendado)</option>
+                                            <option value="manual">Manual</option>
+                                            <option value="max">Máxima compresión</option>
+                                            <option value="storage">Almacenamiento en servidor</option>
+                                            <option value="ultra">Ultra Compresión</option>
+                                        </select>
+                                        <div id="storageModeInfo" class="storage-info d-none">
+                                            Modo almacenamiento: Compresión optimizada para servidores.
+                                        </div>
+                                        <div id="ultraModeInfo" class="ultra-compression-info d-none">
+                                            ¡ATENCIÓN! Ultra Compresión: Máxima reducción de tamaño con pérdida de calidad perceptible. Ideal para archivar.
+                                        </div>
+                                        <div id="aiModeInfo" class="ai-processing">
+                                            Modo IA: Compresión inteligente adaptativa basada en contenido.
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Panel de configuración manual -->
+                                    <div id="manualSettings" class="d-none">
+                                        <!-- Calidad -->
+                                        <div class="mb-3">
+                                            <label for="qualitySlider" class="form-label">Calidad: <span id="qualityValue">85</span>%</label>
+                                            <input type="range" class="form-range" id="qualitySlider" min="1" max="100" value="85">
+                                        </div>
+                                        
+                                        <!-- Reducción de colores -->
+                                        <div class="mb-3">
+                                            <label for="colorReductionSlider" class="form-label">Reducción de colores: <span id="colorReductionValue">0</span>%</label>
+                                            <input type="range" class="form-range" id="colorReductionSlider" min="0" max="100" value="0">
+                                        </div>
+                                        
+                                        <!-- Método de compresión -->
+                                        <div class="mb-3">
+                                            <label for="compressionMethod" class="form-label">Método de compresión:</label>
+                                            <select class="form-select" id="compressionMethod">
+                                                <option value="webp">WebP (Recomendado)</option>
+                                                <option value="jpeg">JPEG</option>
+                                                <option value="png">PNG</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Configuración de IA -->
+                                    <div id="aiSettings" class="ai-settings">
+                                        <h6 class="mb-3">Configuración de IA</h6>
+                                        <div class="mb-3 form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="enableAI" checked>
+                                            <label class="form-check-label" for="enableAI">Usar IA para compresión inteligente</label>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="aiPreset" class="form-label">Perfil de compresión:</label>
+                                            <select class="form-select" id="aiPreset">
+                                                <option value="balanced">Equilibrado (Recomendado)</option>
+                                                <option value="facePriority">Prioridad a rostros</option>
+                                                <option value="textPriority">Prioridad a texto</option>
+                                                <option value="backgroundPriority">Prioridad a fondos</option>
+                                                <option value="custom">Personalizado</option>
+                                            </select>
+                                        </div>
+                                        <div id="customAiSettings" class="d-none">
+                                            <div class="mb-3">
+                                                <label for="faceQualityBoost" class="form-label">Boost calidad rostros: <span id="faceQualityValue">30</span>%</label>
+                                                <input type="range" class="form-range" id="faceQualityBoost" min="0" max="100" value="30">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="textQualityBoost" class="form-label">Boost calidad texto: <span id="textQualityValue">20</span>%</label>
+                                                <input type="range" class="form-range" id="textQualityBoost" min="0" max="100" value="20">
+                                            </div>
+                                        </div>
+                                        <div class="form-text">La IA analiza la imagen para aplicar diferentes niveles de compresión en cada área.</div>
+                                    </div>
+                                    
+                                    <!-- Eliminar metadatos -->
+                                    <div class="mb-3 form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="removeMetadata" checked>
+                                        <label class="form-check-label" for="removeMetadata">Eliminar metadatos EXIF</label>
+                                    </div>
+                                    
+                                    <!-- Contraseña adicional -->
+                                    <div class="mb-3">
+                                        <label for="userPassword" class="form-label">Contraseña adicional (opcional):</label>
+                                        <input type="password" class="form-control" id="userPassword" placeholder="Opcional, para encriptación AES">
+                                    </div>
+                                    
+                                    <!-- Mensaje de hash -->
+                                    <div class="mb-3">
+                                        <div id="hashAlert" class="alert alert-warning alert-hash d-none">
+                                            <strong>¡Atención!</strong> Esta es la única vez que verás este hash. Los primeros 10 caracteres <span id="hashKey" class="hash-prefix"></span> son tu clave de seguridad. Si la pierdes, no podrás recuperar la imagen.
+                                        </div>
+                                    </div>
+                                    
+                                    <button id="compressBtn" class="btn btn-primary w-100" disabled>
+                                        <i class="bi bi-file-earmark-zip"></i> Comprimir Imagen(es) con IA
+                                    </button>
+                                </div>
+                                
+                                <!-- Columna de vista previa -->
+                                <div class="col-md-6">
+                                    <div class="comparison-wrapper">
+                                        <div class="preview-container comparison-container" id="comparisonContainer">
+                                            <span class="preview-label">Comparación Original/Comprimida</span>
+                                            <canvas id="originalComparison" class="img-fluid"></canvas>
+                                            <canvas id="previewCanvas" class="img-fluid"></canvas>
+                                            <canvas id="heatmapOverlay" class="heatmap-overlay"></canvas>
+                                            <div class="comparison-slider" id="comparisonSlider"></div>
+                                            <div class="zoom-view" id="zoomView"></div>
+                                        </div>
+                                    </div>
+                                    <div class="file-info">
+                                        <span id="previewSize">Tamaño estimado: 0 KB</span> | 
+                                        <span id="previewQuality">Calidad estimada: 0%</span>
+                                    </div>
+                                    <div id="imageTypeInfo" class="mt-2 small text-muted"></div>
+                                    <div id="aiAnalysisInfo" class="mt-2 small text-muted"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Panel de resultados -->
+                        <div class="mb-5">
+                            <h2 class="h5 mb-3">3. Resultado Comprimido</h2>
+                            <div class="mb-3">
+                                <textarea id="compressedOutput" class="form-control" rows="5" placeholder="Los datos comprimidos aparecerán aquí" readonly></textarea>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="file-info">
+                                    <span id="compressedSize">Tamaño comprimido: 0 KB</span> | 
+                                    <span id="compressionRatio">Ratio: 0%</span>
+                                </div>
+                                <div>
+                                    <button id="downloadBtn" class="btn btn-success" disabled>
+                                        <i class="bi bi-download"></i> Descargar Archivo
+                                    </button>
+                                    <button id="downloadZipBtn" class="btn btn-info ms-2 d-none" disabled>
+                                        <i class="bi bi-file-zip"></i> Descargar ZIP
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Panel de restauración -->
+                        <div>
+                            <h2 class="h5 mb-3">4. Restaurar Imagen</h2>
+                            <div class="mb-3">
+                                <input type="file" id="compressedInput" class="form-control" accept=".cimg">
+                            </div>
+                            <div class="mb-3">
+                                <label for="decryptionKey" class="form-label">Clave de seguridad (primeros 10 dígitos del hash original):</label>
+                                <input type="text" class="form-control" id="decryptionKey" placeholder="Ingresa los primeros 10 dígitos del hash">
+                            </div>
+                            <div class="mb-3">
+                                <label for="restorePassword" class="form-label">Contraseña adicional (si se usó):</label>
+                                <input type="password" class="form-control" id="restorePassword" placeholder="Ingresa la contraseña adicional si se usó">
+                                <div id="keyError" class="error-message d-none">Clave incorrecta. La imagen no se puede restaurar.</div>
+                            </div>
+                            <button id="restoreBtn" class="btn btn-warning mb-3 w-100" disabled>
+                                <i class="bi bi-file-earmark-image"></i> Restaurar Imagen
+                            </button>
+                            <div id="restoredPreviewContainer" class="preview-container">
+                                <span class="preview-label">Imagen Restaurada</span>
+                                <canvas id="restoredCanvas" class="img-fluid"></canvas>
+                            </div>
+                            <div id="restoredInfo" class="d-flex justify-content-between align-items-center mt-2">
+                                <div class="file-info">
+                                    <span id="restoredSize">Tamaño restaurado: 0 MB</span> | 
+                                    <span id="restoredDimensions">Dimensiones: 0x0 px</span>
+                                </div>
+                                <button id="downloadRestoredBtn" class="btn btn-success" disabled>
+                                    <i class="bi bi-download"></i> Descargar Imagen
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Elementos del DOM
+        const elements = {
+            imageInput: document.getElementById('imageInput'),
+            originalCanvas: document.getElementById('originalCanvas'),
+            originalCtx: document.getElementById('originalCanvas').getContext('2d'),
+            originalSize: document.getElementById('originalSize'),
+            originalDimensions: document.getElementById('originalDimensions'),
+            originalExif: document.getElementById('originalExif'),
+            compressionMode: document.getElementById('compressionMode'),
+            manualSettings: document.getElementById('manualSettings'),
+            qualitySlider: document.getElementById('qualitySlider'),
+            qualityValue: document.getElementById('qualityValue'),
+            colorReductionSlider: document.getElementById('colorReductionSlider'),
+            colorReductionValue: document.getElementById('colorReductionValue'),
+            compressionMethod: document.getElementById('compressionMethod'),
+            removeMetadata: document.getElementById('removeMetadata'),
+            userPassword: document.getElementById('userPassword'),
+            hashAlert: document.getElementById('hashAlert'),
+            hashKey: document.getElementById('hashKey'),
+            compressBtn: document.getElementById('compressBtn'),
+            compressedOutput: document.getElementById('compressedOutput'),
+            compressedSize: document.getElementById('compressedSize'),
+            compressionRatio: document.getElementById('compressionRatio'),
+            downloadBtn: document.getElementById('downloadBtn'),
+            downloadZipBtn: document.getElementById('downloadZipBtn'),
+            compressedInput: document.getElementById('compressedInput'),
+            decryptionKey: document.getElementById('decryptionKey'),
+            restorePassword: document.getElementById('restorePassword'),
+            restoreBtn: document.getElementById('restoreBtn'),
+            restoredCanvas: document.getElementById('restoredCanvas'),
+            restoredCtx: document.getElementById('restoredCanvas').getContext('2d'),
+            restoredSize: document.getElementById('restoredSize'),
+            restoredDimensions: document.getElementById('restoredDimensions'),
+            downloadRestoredBtn: document.getElementById('downloadRestoredBtn'),
+            previewCanvas: document.getElementById('previewCanvas'),
+            previewCtx: document.getElementById('previewCanvas').getContext('2d'),
+            previewSize: document.getElementById('previewSize'),
+            previewQuality: document.getElementById('previewQuality'),
+            restoredPreviewContainer: document.getElementById('restoredPreviewContainer'),
+            restoredInfo: document.getElementById('restoredInfo'),
+            keyError: document.getElementById('keyError'),
+            comparisonContainer: document.getElementById('comparisonContainer'),
+            comparisonSlider: document.getElementById('comparisonSlider'),
+            zoomView: document.getElementById('zoomView'),
+            imageTypeInfo: document.getElementById('imageTypeInfo'),
+            batchList: document.getElementById('batchList'),
+            batchItemsContainer: document.getElementById('batchItemsContainer'),
+            originalComparison: document.getElementById('originalComparison'),
+            originalComparisonCtx: document.getElementById('originalComparison').getContext('2d'),
+            storageModeInfo: document.getElementById('storageModeInfo'),
+            ultraModeInfo: document.getElementById('ultraModeInfo'),
+            analyzeBtn: document.getElementById('analyzeBtn'),
+            aiStatus: document.getElementById('aiStatus'),
+            aiStatusText: document.getElementById('aiStatusText'),
+            aiProgress: document.getElementById('aiProgress'),
+            heatmapOverlay: document.getElementById('heatmapOverlay'),
+            heatmapCtx: document.getElementById('heatmapOverlay').getContext('2d'),
+            enableAI: document.getElementById('enableAI'),
+            aiPreset: document.getElementById('aiPreset'),
+            customAiSettings: document.getElementById('customAiSettings'),
+            faceQualityBoost: document.getElementById('faceQualityBoost'),
+            textQualityBoost: document.getElementById('textQualityBoost'),
+            faceQualityValue: document.getElementById('faceQualityValue'),
+            textQualityValue: document.getElementById('textQualityValue'),
+            aiAnalysisInfo: document.getElementById('aiAnalysisInfo')
+        };
+
+        // Variables globales
+        let state = {
+            originalImageData: null,
+            originalImageBlob: null,
+            originalFileSize: 0,
+            fileHash: '',
+            encryptionKey: '',
+            restoredImageType: 'png',
+            isKeyValid: false,
+            batchFiles: [],
+            currentBatchIndex: 0,
+            compressedBatch: [],
+            exifData: null,
+            imageType: 'unknown',
+            aiModel: null,
+            aiAnalysis: null,
+            aiHeatmap: null,
+            tfReady: false
+        };
+
+        /** Calcula el hash SHA-256 de un archivo */
+        async function calculateFileHash(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        const arrayBuffer = reader.result;
+                        // Convertir ArrayBuffer a WordArray de CryptoJS
+                        const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer);
+                        const hash = CryptoJS.SHA256(wordArray).toString();
+                        resolve(hash);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = (error) => {
+                    reject(error);
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', async () => {
+            setupEventListeners();
+            setupComparisonSlider();
+            setupZoomView();
+            
+            // Inicializar TensorFlow.js
+            await initTensorFlow();
+        });
+
+        /** Inicializa TensorFlow.js y carga modelos de IA */
+        async function initTensorFlow() {
+            try {
+                elements.aiStatusText.textContent = "IA: Inicializando...";
+                elements.aiStatus.classList.remove('d-none');
+                elements.aiProgress.style.width = "10%";
+                
+                // Verificar si TensorFlow.js está disponible
+                if (!tf || !tf.ready) {
+                    throw new Error("TensorFlow.js no se pudo cargar");
+                }
+                
+                // Esperar a que TensorFlow esté listo
+                await tf.ready();
+                elements.aiProgress.style.width = "30%";
+                
+                // Cargar modelo de segmentación (BodyPix para personas)
+                state.aiModel = await bodyPix.load({
+                    architecture: 'MobileNetV1',
+                    outputStride: 16,
+                    multiplier: 0.75,
+                    quantBytes: 2
+                });
+                
+                elements.aiProgress.style.width = "70%";
+                
+                // Cargar modelo personalizado para detección de texto (usando un modelo genérico)
+                // Nota: En una implementación real, deberías cargar un modelo específico para texto
+                
+                elements.aiStatusText.textContent = "IA: Modelos cargados";
+                elements.aiProgress.style.width = "100%";
+                state.tfReady = true;
+                
+                // Ocultar barra de progreso después de 2 segundos
+                setTimeout(() => {
+                    elements.aiStatus.classList.add('d-none');
+                }, 2000);
+                
+            } catch (error) {
+                console.error("Error al inicializar TensorFlow:", error);
+                elements.aiStatusText.textContent = "IA: Error al cargar modelos";
+                elements.aiProgress.style.width = "100%";
+                elements.aiProgress.classList.add('bg-danger');
+                
+                // Deshabilitar funciones de IA
+                elements.enableAI.checked = false;
+                elements.enableAI.disabled = true;
+                elements.aiPreset.disabled = true;
+                state.tfReady = false;
+            }
+        }
+
+        /** Configura los event listeners */
+        function setupEventListeners() {
+            // Carga de imagen original
+            elements.imageInput.addEventListener('change', handleImageUpload);
+            
+            // Modo de compresión
+            elements.compressionMode.addEventListener('change', () => {
+                if (elements.compressionMode.value === 'manual') {
+                    elements.manualSettings.classList.remove('d-none');
+                    elements.storageModeInfo.classList.add('d-none');
+                    elements.ultraModeInfo.classList.add('d-none');
+                } else if (elements.compressionMode.value === 'storage') {
+                    elements.manualSettings.classList.add('d-none');
+                    elements.storageModeInfo.classList.remove('d-none');
+                    elements.ultraModeInfo.classList.add('d-none');
+                } else if (elements.compressionMode.value === 'ultra') {
+                    elements.manualSettings.classList.add('d-none');
+                    elements.storageModeInfo.classList.add('d-none');
+                    elements.ultraModeInfo.classList.remove('d-none');
+                } else {
+                    elements.manualSettings.classList.add('d-none');
+                    elements.storageModeInfo.classList.add('d-none');
+                    elements.ultraModeInfo.classList.add('d-none');
+                }
+                updateQualityPreview();
+            });
+            
+            // Configuración de IA
+            elements.enableAI.addEventListener('change', updateQualityPreview);
+            elements.aiPreset.addEventListener('change', function() {
+                elements.customAiSettings.classList.toggle('d-none', this.value !== 'custom');
+                updateQualityPreview();
+            });
+            elements.faceQualityBoost.addEventListener('input', function() {
+                elements.faceQualityValue.textContent = this.value;
+                updateQualityPreview();
+            });
+            elements.textQualityBoost.addEventListener('input', function() {
+                elements.textQualityValue.textContent = this.value;
+                updateQualityPreview();
+            });
+            
+            // Botón de análisis con IA
+            elements.analyzeBtn.addEventListener('click', analyzeImageWithAI);
+            
+            // Controles de compresión
+            elements.qualitySlider.addEventListener('input', updateQualityPreview);
+            elements.colorReductionSlider.addEventListener('input', updateQualityPreview);
+            elements.compressionMethod.addEventListener('change', updateQualityPreview);
+            elements.compressBtn.addEventListener('click', compressImage);
+            
+            // Descarga de archivo comprimido
+            elements.downloadBtn.addEventListener('click', downloadCompressedFile);
+            elements.downloadZipBtn.addEventListener('click', downloadCompressedZip);
+            
+            // Restauración de imagen
+            elements.compressedInput.addEventListener('change', () => {
+                elements.restoreBtn.disabled = !elements.compressedInput.files[0];
+            });
+            elements.restoreBtn.addEventListener('click', restoreImage);
+            
+            // Descarga de imagen restaurada
+            elements.downloadRestoredBtn.addEventListener('click', downloadRestoredImage);
+        }
+
+        /** Configura el slider de comparación */
+        function setupComparisonSlider() {
+            let isDragging = false;
+            
+            elements.comparisonSlider.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                updateSliderPosition(e.clientX);
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    updateSliderPosition(e.clientX);
+                    e.preventDefault();
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            elements.comparisonContainer.addEventListener('mouseenter', () => {
+                if (elements.previewCanvas.width > 0) {
+                    elements.zoomView.style.display = 'block';
+                }
+            });
+            
+            elements.comparisonContainer.addEventListener('mouseleave', () => {
+                elements.zoomView.style.display = 'none';
+            });
+            
+            function updateSliderPosition(x) {
+                const container = elements.comparisonContainer.getBoundingClientRect();
+                const position = Math.max(0, Math.min(1, (x - container.left) / container.width));
+                elements.comparisonSlider.style.left = `${position * 100}%`;
+                
+                // Aplicar clip path al canvas de previsualización
+                elements.previewCanvas.style.clipPath = `polygon(0 0, ${position * 100}% 0, ${position * 100}% 100%, 0 100%)`;
+            }
+        }
+
+        /** Configura la vista de zoom */
+        function setupZoomView() {
+            elements.comparisonContainer.addEventListener('mousemove', (e) => {
+                if (!elements.previewCanvas.width || !elements.originalComparison.width) return;
+                
+                const container = elements.comparisonContainer.getBoundingClientRect();
+                const x = e.clientX - container.left;
+                const y = e.clientY - container.top;
+                
+                // Posición del zoom
+                elements.zoomView.style.left = `${x - 75}px`;
+                elements.zoomView.style.top = `${y - 75}px`;
+                
+                // Calcular posición relativa en ambas imágenes
+                const relX = x / container.width * elements.previewCanvas.width;
+                const relY = y / container.height * elements.previewCanvas.height;
+                
+                // Crear imagen de zoom
+                const zoomSize = 150;
+                const zoomScale = 2;
+                const zoomCtx = document.createElement('canvas').getContext('2d');
+                zoomCtx.canvas.width = zoomSize * 2;
+                zoomCtx.canvas.height = zoomSize;
+                
+                // Dibujar sección ampliada de ambas imágenes
+                const drawZoomSection = (canvas, offsetX = 0) => {
+                    zoomCtx.save();
+                    zoomCtx.beginPath();
+                    zoomCtx.arc(zoomSize/2 + offsetX, zoomSize/2, zoomSize/2, 0, Math.PI * 2);
+                    zoomCtx.closePath();
+                    zoomCtx.clip();
+                    
+                    zoomCtx.drawImage(
+                        canvas,
+                        Math.max(0, relX - zoomSize/zoomScale/2),
+                        Math.max(0, relY - zoomSize/zoomScale/2),
+                        zoomSize/zoomScale, zoomSize/zoomScale,
+                        offsetX, 0, zoomSize, zoomSize
+                    );
+                    zoomCtx.restore();
+                };
+                
+                // Dibujar original a la izquierda y comprimida a la derecha
+                drawZoomSection(elements.originalComparison);
+                drawZoomSection(elements.previewCanvas, zoomSize);
+                
+                // Actualizar vista de zoom
+                elements.zoomView.style.backgroundImage = `url(${zoomCtx.canvas.toDataURL()})`;
+                elements.zoomView.style.width = `${zoomSize * 2}px`;
+            });
+        }
+
+        /** Maneja la subida de la(s) imagen(es) original(es) */
+        async function handleImageUpload(e) {
+            const files = Array.from(e.target.files);
+            if (!files.length) return;
+            
+            // Resetear estado
+            state.batchFiles = files;
+            state.currentBatchIndex = 0;
+            state.compressedBatch = [];
+            state.aiAnalysis = null;
+            
+            // Mostrar lista de archivos si hay más de uno
+            if (files.length > 1) {
+                elements.batchList.classList.remove('d-none');
+                elements.batchItemsContainer.innerHTML = '';
+                
+                files.forEach((file, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'batch-item';
+                    item.innerHTML = `
+                        <div class="d-flex justify-content-between">
+                            <span>${file.name} (${(file.size / 1024).toFixed(2)} KB)</span>
+                            <span class="batch-status" id="batchStatus${index}">Pendiente</span>
+                        </div>
+                        <div class="progress batch-progress">
+                            <div id="batchProgress${index}" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    `;
+                    elements.batchItemsContainer.appendChild(item);
+                });
+            } else {
+                elements.batchList.classList.add('d-none');
+            }
+            
+            // Procesar primer archivo para vista previa
+            await processImageForPreview(files[0]);
+        }
+
+        /** Procesa una imagen para vista previa */
+        async function processImageForPreview(file) {
+            try {
+                state.originalFileSize = file.size;
+                state.originalImageBlob = file;
+                
+                // Mostrar información del archivo
+                elements.originalSize.textContent = `Tamaño: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+                
+                // Cargar imagen en canvas
+                const img = await loadImage(file);
+                drawImageToCanvas(img, elements.originalCanvas, elements.originalCtx);
+                
+                // Copiar al canvas de comparación original
+                elements.originalComparison.width = img.width;
+                elements.originalComparison.height = img.height;
+                elements.originalComparisonCtx.drawImage(img, 0, 0);
+                
+                // Mostrar dimensiones
+                elements.originalDimensions.textContent = `Dimensiones: ${img.width}x${img.height} px`;
+                
+                // Copiar al canvas de previsualización
+                elements.previewCanvas.width = img.width;
+                elements.previewCanvas.height = img.height;
+                elements.previewCtx.drawImage(img, 0, 0);
+                
+                // Configurar heatmap de IA
+                elements.heatmapOverlay.width = img.width;
+                elements.heatmapOverlay.height = img.height;
+                
+                // Calcular hash del archivo (SHA-256)
+                state.fileHash = await calculateFileHash(file);
+                state.encryptionKey = state.fileHash.substring(0, 10);
+                
+                // Mostrar solo el mensaje de advertencia con la clave
+                elements.hashKey.textContent = state.encryptionKey;
+                elements.hashAlert.classList.remove('d-none');
+                
+                // Leer metadatos EXIF
+                await readExifData(file);
+                
+                // Analizar tipo de imagen
+                analyzeImageType(img);
+                
+                // Mostrar botón de análisis con IA si TensorFlow está listo
+                elements.analyzeBtn.classList.toggle('d-none', !state.tfReady);
+                
+                // Actualizar previsualización
+                updateQualityPreview();
+                
+                // Habilitar botón de compresión
+                elements.compressBtn.disabled = false;
+                
+            } catch (error) {
+                console.error('Error al cargar imagen:', error);
+                alert('Error al cargar la imagen: ' + error.message);
+            }
+        }
+
+        /** Analiza la imagen con IA para detectar áreas importantes */
+        async function analyzeImageWithAI() {
+            if (!state.tfReady || !state.originalImageBlob) {
+                alert("La IA no está lista o no hay imagen cargada");
+                return;
+            }
+            
+            try {
+                elements.analyzeBtn.disabled = true;
+                elements.analyzeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Analizando...';
+                elements.aiStatusText.textContent = "IA: Analizando imagen...";
+                elements.aiStatus.classList.remove('d-none');
+                elements.aiProgress.style.width = "0%";
+                
+                // Cargar imagen en tensor
+                const img = await loadImage(state.originalImageBlob);
+                const tensor = await imageToTensor(img);
+                elements.aiProgress.style.width = "20%";
+                
+                // 1. Segmentación de personas (usando BodyPix)
+                const segmentation = await state.aiModel.segmentPerson(tensor, {
+                    flipHorizontal: false,
+                    internalResolution: 'medium',
+                    segmentationThreshold: 0.7
+                });
+                elements.aiProgress.style.width = "40%";
+                
+                // 2. Detección de texto (simulada - en producción usar un modelo real)
+                const textMask = await simulateTextDetection(tensor);
+                elements.aiProgress.style.width = "60%";
+                
+                // 3. Detección de bordes (para identificar áreas con mucho detalle)
+                const edgeMask = await detectEdges(tensor);
+                elements.aiProgress.style.width = "80%";
+                
+                // Procesar resultados
+                state.aiAnalysis = {
+                    personMask: segmentation.data,
+                    textMask: textMask,
+                    edgeMask: edgeMask,
+                    width: segmentation.width,
+                    height: segmentation.height
+                };
+                
+                // Generar heatmap visual
+                generateHeatmap();
+                
+                elements.aiStatusText.textContent = "IA: Análisis completado";
+                elements.aiProgress.style.width = "100%";
+                elements.aiAnalysisInfo.innerHTML = `
+                    <strong>Análisis IA:</strong> 
+                    ${segmentation.data.filter(v => v > 0).length > 0 ? 'Personas detectadas' : 'No se detectaron personas'} | 
+                    ${textMask.filter(v => v > 0).length > 0 ? 'Texto detectado' : 'No se detectó texto'} |
+                    Áreas detalladas identificadas
+                `;
+                
+                // Actualizar previsualización con la nueva información
+                updateQualityPreview();
+                
+            } catch (error) {
+                console.error("Error en análisis con IA:", error);
+                elements.aiStatusText.textContent = "IA: Error en análisis";
+                elements.aiProgress.style.width = "100%";
+                elements.aiProgress.classList.add('bg-danger');
+                alert("Error al analizar la imagen con IA: " + error.message);
+            } finally {
+                elements.analyzeBtn.disabled = false;
+                elements.analyzeBtn.innerHTML = '<i class="bi bi-robot"></i> Analizar Imagen con IA';
+                
+                // Ocultar barra de progreso después de 2 segundos
+                setTimeout(() => {
+                    elements.aiStatus.classList.add('d-none');
+                    elements.aiProgress.classList.remove('bg-danger');
+                }, 2000);
+            }
+        }
+
+        /** Convierte una imagen a tensor de TensorFlow */
+        async function imageToTensor(img) {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            
+            return tf.browser.fromPixels(canvas);
+        }
+
+        /** Simula detección de texto (en producción usar un modelo real) */
+        async function simulateTextDetection(tensor) {
+            const imageData = await tf.browser.toPixels(tensor);
+            const mask = new Uint8Array(tensor.shape[0] * tensor.shape[1]);
+            
+            // Analizar píxeles para encontrar áreas de posible texto (alto contraste)
+            for (let i = 0; i < imageData.length; i += 4) {
+                const x = (i / 4) % tensor.shape[1];
+                const y = Math.floor((i / 4) / tensor.shape[1]);
+                
+                // Calcular contraste local
+                let contrast = 0;
+                const sampleSize = 5;
+                const samples = [];
+                
+                for (let dy = -sampleSize; dy <= sampleSize; dy++) {
+                    for (let dx = -sampleSize; dx <= sampleSize; dx++) {
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        
+                        if (nx >= 0 && nx < tensor.shape[1] && ny >= 0 && ny < tensor.shape[0]) {
+                            const ni = (ny * tensor.shape[1] + nx) * 4;
+                            samples.push(imageData[ni] + imageData[ni+1] + imageData[ni+2]);
+                        }
+                    }
+                }
+                
+                if (samples.length > 0) {
+                    const max = Math.max(...samples);
+                    const min = Math.min(...samples);
+                    contrast = max - min;
+                }
+                
+                // Marcar como posible texto si el contraste es alto
+                if (contrast > 150) {
+                    mask[Math.floor(i / 4)] = 1;
+                }
+            }
+            
+            return mask;
+        }
+
+        /** Detecta bordes en la imagen */
+        async function detectEdges(tensor) {
+            // Convertir a escala de grises
+            const gray = tf.tidy(() => {
+                // Asegurarse de que el tensor tiene 3 canales (RGB)
+                let processedTensor = tensor;
+                if (tensor.shape.length === 3 && tensor.shape[2] === 3) {
+                    // Sumar los canales RGB para obtener escala de grises
+                    return tf.sum(tf.mul(tensor, tf.tensor([0.2989, 0.5870, 0.1140], [1, 1, 3])), 2, true);
+                } else {
+                    // Si ya es escala de grises, devolver tal cual
+                    return tensor;
+                }
+            });
+            
+            // Asegurar que el tensor tiene la forma correcta [height, width, 1]
+            const reshapedGray = tf.tidy(() => {
+                return tf.reshape(gray, [gray.shape[0], gray.shape[1], 1]);
+            });
+            
+            // Aplicar filtro de Sobel para detección de bordes
+            const sobel = tf.tidy(() => {
+                // Crear kernels de Sobel como tensores 4D [filterHeight, filterWidth, inChannels, outChannels]
+                const sobelX = tf.tensor([[[[-1]], [[0]], [[1]]], [[[-2]], [[0]], [[2]]], [[[-1]], [[0]], [[1]]]]);
+                const sobelY = tf.tensor([[[[-1]], [[-2]], [[-1]]], [[[0]], [[0]], [[0]]], [[[1]], [[2]], [[1]]]]);
+                
+                // Expandir dimensiones para convolución [batch, height, width, channels]
+                const input = tf.expandDims(reshapedGray, 0);
+                
+                const gx = tf.conv2d(input, sobelX, 1, 'same');
+                const gy = tf.conv2d(input, sobelY, 1, 'same');
+                
+                return tf.sqrt(tf.add(tf.square(gx), tf.square(gy)));
+            });
+            
+            // Normalizar y umbralizar
+            const edges = tf.tidy(() => {
+                const normalized = tf.div(sobel, tf.max(sobel));
+                return tf.greater(normalized, 0.3).toInt();
+            });
+            
+            // Obtener datos y limpiar tensores
+            const edgeData = await edges.data();
+            tf.dispose([gray, reshapedGray, sobel, edges]);
+            
+            return edgeData;
+        }
+
+        /** Genera un heatmap visual basado en el análisis de IA */
+        function generateHeatmap() {
+            if (!state.aiAnalysis) return;
+            
+            const { width, height, personMask, textMask, edgeMask } = state.aiAnalysis;
+            const canvas = elements.heatmapOverlay;
+            const ctx = elements.heatmapCtx;
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Crear imagen de heatmap
+            const imageData = ctx.createImageData(width, height);
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const i = (y * width + x) * 4;
+                    const personValue = personMask[y * width + x] > 0 ? 1 : 0;
+                    const textValue = textMask[y * width + x] > 0 ? 1 : 0;
+                    const edgeValue = edgeMask[y * width + x] > 0 ? 1 : 0;
+                    
+                    // Asignar colores según lo detectado
+                    // Rojo para personas, Verde para texto, Azul para bordes
+                    imageData.data[i] = personValue * 255;     // R
+                    imageData.data[i+1] = textValue * 255;     // G
+                    imageData.data[i+2] = edgeValue * 255;     // B
+                    imageData.data[i+3] = Math.min(255, (personValue + textValue + edgeValue) * 100);  // A
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        /** Optimiza una imagen con IA para compresión adaptativa */
+        async function optimizeWithAI(canvas, quality, colorReduction, format) {
+            if (!state.aiAnalysis || !elements.enableAI.checked) {
+                // Si no hay análisis de IA o está desactivado, proceder con compresión normal
+                return optimizeImageBasic(canvas, quality, colorReduction, format);
+            }
+            
+            const { width, height, personMask, textMask, edgeMask } = state.aiAnalysis;
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+            
+            // Determinar configuraciones basadas en el perfil seleccionado
+            let faceBoost, textBoost, edgeBoost;
+            
+            switch(elements.aiPreset.value) {
+                case 'facePriority':
+                    faceBoost = 0.5;
+                    textBoost = 0.2;
+                    edgeBoost = 0.3;
+                    break;
+                case 'textPriority':
+                    faceBoost = 0.2;
+                    textBoost = 0.5;
+                    edgeBoost = 0.3;
+                    break;
+                case 'backgroundPriority':
+                    faceBoost = 0.1;
+                    textBoost = 0.1;
+                    edgeBoost = 0.1;
+                    break;
+                case 'custom':
+                    faceBoost = elements.faceQualityBoost.value / 100;
+                    textBoost = elements.textQualityBoost.value / 100;
+                    edgeBoost = 0.3;
+                    break;
+                case 'balanced':
+                default:
+                    faceBoost = 0.3;
+                    textBoost = 0.3;
+                    edgeBoost = 0.3;
+            }
+            
+            // Aplicar compresión adaptativa
+            for (let i = 0; i < data.length; i += 4) {
+                const x = (i / 4) % width;
+                const y = Math.floor((i / 4) / width);
+                const idx = y * width + x;
+                
+                // Calcular factor de calidad local
+                let qualityFactor = 1.0;
+                
+                if (personMask[idx] > 0) {
+                    // Áreas con personas - alta calidad
+                    qualityFactor += faceBoost;
+                }
+                
+                if (textMask[idx] > 0) {
+                    // Áreas con texto - alta calidad
+                    qualityFactor += textBoost;
+                }
+                
+                if (edgeMask[idx] > 0) {
+                    // Áreas con bordes/detalle - calidad media
+                    qualityFactor += edgeBoost;
+                }
+                
+                // Aplicar reducción de colores adaptativa
+                const reductionFactor = 1 + (colorReduction / 100 * 31 * (1 / qualityFactor));
+                
+                data[i] = Math.round(data[i] / reductionFactor) * reductionFactor;     // R
+                data[i+1] = Math.round(data[i+1] / reductionFactor) * reductionFactor; // G
+                data[i+2] = Math.round(data[i+2] / reductionFactor) * reductionFactor; // B
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            
+            // Convertir a formato deseado con calidad adaptativa
+            return new Promise((resolve) => {
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, `image/${format}`, quality);
+            });
+        }
+
+        /** Optimiza una imagen básica sin IA */
+        async function optimizeImageBasic(canvas, quality, colorReduction, format) {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Aplicar reducción de colores
+            if (colorReduction > 0) {
+                const reductionFactor = 1 + (colorReduction / 100 * 31);
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = Math.round(data[i] / reductionFactor) * reductionFactor;     // R
+                    data[i+1] = Math.round(data[i+1] / reductionFactor) * reductionFactor; // G
+                    data[i+2] = Math.round(data[i+2] / reductionFactor) * reductionFactor; // B
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+            }
+            
+            // Convertir a formato deseado
+            return new Promise((resolve) => {
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, `image/${format}`, quality);
+            });
+        }
+
+        /** Optimiza una imagen según los parámetros - Versión mejorada con IA */
+        async function optimizeImage(blob, quality, colorReduction, format = 'webp', removeMetadata = true) {
+            // Si estamos en modo ultra compresión, aplicar configuraciones especiales
+            const isUltraMode = elements.compressionMode.value === 'ultra';
+            const isStorageMode = elements.compressionMode.value === 'storage';
+            
+            if (isUltraMode || isStorageMode) {
+                // Forzar WebP que generalmente ofrece mejor compresión
+                format = 'webp';
+                
+                // Ajustar calidad dinámicamente basado en el tamaño original
+                if (state.originalFileSize > 2 * 1024 * 1024) { // >2MB
+                    quality = Math.max(0.3, quality - 0.2); // Reducción adicional para imágenes grandes
+                } else if (state.originalFileSize > 5 * 1024 * 1024) { // >5MB
+                    quality = Math.max(0.2, quality - 0.3); // Reducción aún mayor para imágenes muy grandes
+                }
+                
+                // Aumentar reducción de colores para imágenes grandes
+                if (state.originalFileSize > 1 * 1024 * 1024) {
+                    colorReduction = Math.min(100, colorReduction + 25);
+                }
+            }
+            
+            // Cargar imagen
+            const img = await loadImage(blob);
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            
+            // Dibujar imagen original
+            ctx.drawImage(img, 0, 0);
+            
+            // Optimizar con IA si está habilitado
+            if (state.aiAnalysis && elements.enableAI.checked) {
+                return optimizeWithAI(canvas, quality, colorReduction, format);
+            }
+            
+            // Si no, proceder con optimización normal
+            return optimizeImageBasic(canvas, quality, colorReduction, format);
+        }
+
+        /** Actualiza la previsualización con los ajustes actuales */
+        async function updateQualityPreview() {
+            if (!state.originalImageBlob) return;
+            
+            // Si es modo automático o almacenamiento, aplicar configuración basada en tipo de imagen
+            if (elements.compressionMode.value === 'auto' || elements.compressionMode.value === 'storage' || elements.compressionMode.value === 'ultra') {
+                applyAutoSettings();
+            }
+            
+            // Actualizar valores mostrados
+            elements.qualityValue.textContent = elements.qualitySlider.value;
+            elements.colorReductionValue.textContent = elements.colorReductionSlider.value;
+            
+            // Calcular calidad estimada (100% - reducción de calidad)
+            const estimatedQuality = elements.qualitySlider.value - (elements.colorReductionSlider.value / 2);
+            elements.previewQuality.textContent = `Calidad estimada: ${Math.max(1, Math.round(estimatedQuality))}%`;
+            
+            // Optimizar imagen para previsualización
+            const quality = elements.qualitySlider.value / 100;
+            const colorReduction = elements.colorReductionSlider.value;
+            const previewBlob = await optimizeImage(state.originalImageBlob, quality, colorReduction);
+            
+            // Mostrar tamaño estimado
+            elements.previewSize.textContent = `Tamaño estimado: ${(previewBlob.size / 1024).toFixed(2)} KB`;
+            
+            // Mostrar en canvas de previsualización
+            const img = await loadImage(previewBlob);
+            
+            // Asegurarse que el canvas tenga el tamaño correcto
+            elements.previewCanvas.width = img.width;
+            elements.previewCanvas.height = img.height;
+            elements.previewCtx.drawImage(img, 0, 0, img.width, img.height);
+            
+            // Forzar redibujado del slider de comparación
+            updateComparisonSlider();
+        }
+
+        /** Comprime la(s) imagen(es) con los ajustes seleccionados */
+        async function compressImage() {
+            try {
+                elements.compressBtn.disabled = true;
+                elements.compressBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Comprimiendo...';
+                
+                // Agregar timeout para evitar bloqueo
+                setTimeout(async () => {
+                    try {
+                        const result = await compressSingleImage(state.originalImageBlob);
+                        
+                        // Validación adicional del archivo comprimido
+                        if (!result.blob || result.blob.size === 0) {
+                            throw new Error('Error: El archivo comprimido está vacío');
+                        }
+                        
+                        if (result.compressedSize === 0) {
+                            throw new Error('Error: No se generaron datos comprimidos');
+                        }
+
+                        showSingleResult(result);
+                    } catch (error) {
+                        console.error('Error al comprimir:', error);
+                        alert(error.message);
+                    } finally {
+                        elements.compressBtn.disabled = false;
+                        elements.compressBtn.innerHTML = '<i class="bi bi-file-earmark-zip"></i> Comprimir Imagen';
+                    }
+                }, 100); // Pequeño delay para permitir que la UI se actualice
+                
+            } catch (error) {
+                console.error('Error en la compresión:', error);
+                elements.compressBtn.disabled = false;
+                elements.compressBtn.innerHTML = '<i class="bi bi-file-earmark-zip"></i> Comprimir Imagen';
+                alert('Error al comprimir la imagen: ' + error.message);
+            }
+        }
+
+        /** Comprime una sola imagen */
+        async function compressSingleImage(file) {
+            const quality = elements.qualitySlider.value / 100;
+            const colorReduction = elements.colorReductionSlider.value;
+            const method = elements.compressionMethod.value;
+            const removeMeta = elements.removeMetadata.checked;
+            const userPassword = elements.userPassword.value;
+            const isUltraMode = elements.compressionMode.value === 'ultra';
+            
+            // Paso 1: Optimizar la imagen
+            let optimizedBlob = await optimizeImage(file, quality, colorReduction, method, removeMeta);
+            
+            // Validar que la imagen optimizada no esté vacía
+            if (!optimizedBlob || optimizedBlob.size === 0) {
+                throw new Error('Error: La imagen optimizada está vacía');
+            }
+            
+            // Paso 2: Comprimir los datos
+            const compressedData = await compressData(optimizedBlob);
+            
+            // Validar que los datos comprimidos no estén vacíos
+            if (!compressedData || compressedData.size === 0) {
+                throw new Error('Error: Los datos comprimidos están vacíos');
+            }
+            
+            // Paso 3: Encriptar si hay contraseña
+            let finalData;
+            let encryptionInfo = '';
+            
+            if (userPassword) {
+                try {
+                    const encrypted = await encryptData(compressedData, userPassword);
+                    finalData = encrypted.data;
+                    encryptionInfo = `encriptado (${encrypted.method})`;
+                    
+                    // Validar que los datos encriptados no estén vacíos
+                    if (!finalData || finalData.size === 0) {
+                        throw new Error('Error: Los datos encriptados están vacíos');
+                    }
+                } catch (error) {
+                    console.error('Error en encriptación:', error);
+                    throw new Error('Error al encriptar los datos. La contraseña puede ser inválida.');
+                }
+            } else {
+                finalData = compressedData;
+            }
+            
+            // Paso 4: Crear estructura de metadatos
+            const metadata = {
+                v: 2, // versión 2 con soporte para AES
+                k: state.encryptionKey, // clave (hash)
+                t: Date.now(), // timestamp
+                w: elements.originalCanvas.width, // ancho
+                h: elements.originalCanvas.height, // alto
+                q: elements.qualitySlider.value, // calidad
+                c: elements.colorReductionSlider.value, // reducción de color
+                m: method, // método de compresión
+                f: state.restoredImageType, // formato original
+                e: userPassword ? 'aes' : null, // método de encriptación
+                u: isUltraMode // bandera de ultra compresión
+            };
+            
+            // Convertir a JSON y luego a Uint8Array
+            const metadataStr = JSON.stringify(metadata);
+            const metadataEncoder = new TextEncoder();
+            const metadataBytes = metadataEncoder.encode(metadataStr);
+            
+            // Convertir imagen comprimida (o encriptada) a Uint8Array
+            const finalArrayBuffer = await finalData.arrayBuffer();
+            const finalArray = new Uint8Array(finalArrayBuffer);
+            
+            // Validar que los datos finales no estén vacíos
+            if (finalArray.length === 0) {
+                throw new Error('Error: Los datos finales están vacíos');
+            }
+            
+            // Crear buffer para el archivo final
+            const buffer = new ArrayBuffer(6 + metadataBytes.length + finalArray.length);
+            const view = new DataView(buffer);
+            
+            // Marca de inicio (0x1A 0x2B 0x3C 0x4D)
+            view.setUint8(0, 0x1A);
+            view.setUint8(1, 0x2B);
+            view.setUint8(2, 0x3C);
+            view.setUint8(3, 0x4D);
+            
+            // Longitud de metadatos (2 bytes)
+            view.setUint16(4, metadataBytes.length);
+            
+            // Copiar metadatos
+            const metadataArray = new Uint8Array(buffer, 6, metadataBytes.length);
+            metadataArray.set(metadataBytes);
+            
+            // Copiar datos de imagen
+            const imageDataArray = new Uint8Array(buffer, 6 + metadataBytes.length, finalArray.length);
+            imageDataArray.set(finalArray);
+            
+            // Crear blob final
+            const finalBlob = new Blob([buffer], { type: 'application/octet-stream' });
+            
+            return {
+                blob: finalBlob,
+                metadata: metadata,
+                originalSize: file.size,
+                compressedSize: buffer.byteLength,
+                name: file.name.replace(/\.[^/.]+$/, "") + '.cimg' // Cambiar extensión
+            };
+        }
+
+        /** Muestra resultados para compresión única */
+        function showSingleResult(result) {
+            // Mostrar información en el área de texto
+            elements.compressedOutput.value = `Archivo comprimido generado (${(result.compressedSize / 1024).toFixed(2)} KB)\n` +
+                                            `Método: ${result.metadata.m.toUpperCase()}\n` +
+                                            `Clave: ${state.encryptionKey}\n` +
+                                            `Dimensiones originales: ${result.metadata.w}x${result.metadata.h}`;
+            
+            // Calcular estadísticas
+            const compressedSizeKB = result.compressedSize / 1024;
+            const originalSizeKB = result.originalSize / 1024;
+            const ratio = (compressedSizeKB / originalSizeKB) * 100;
+            
+            elements.compressedSize.textContent = `Tamaño comprimido: ${compressedSizeKB.toFixed(2)} KB`;
+            elements.compressionRatio.textContent = `Ratio: ${ratio.toFixed(2)}%`;
+            
+            // Guardar blob final en estado
+            state.compressedBlob = result.blob;
+            
+            // Configurar botones de descarga
+            elements.downloadBtn.disabled = false;
+            elements.downloadZipBtn.classList.add('d-none');
+        }
+
+        /** Muestra resultados para compresión por lotes */
+        function showBatchResults() {
+            const totalOriginalSize = state.compressedBatch.reduce((sum, item) => sum + item.originalSize, 0);
+            const totalCompressedSize = state.compressedBatch.reduce((sum, item) => sum + item.compressedSize, 0);
+            const ratio = (totalCompressedSize / totalOriginalSize) * 100;
+            
+            // Mostrar resumen en el área de texto
+            elements.compressedOutput.value = `Lote de ${state.compressedBatch.length} archivos comprimidos\n` +
+                                            `Tamaño total original: ${(totalOriginalSize / 1024).toFixed(2)} KB\n` +
+                                            `Tamaño total comprimido: ${(totalCompressedSize / 1024).toFixed(2)} KB\n` +
+                                            `Ratio de compresión: ${ratio.toFixed(2)}%`;
+            
+            // Mostrar estadísticas
+            elements.compressedSize.textContent = `Tamaño total comprimido: ${(totalCompressedSize / 1024).toFixed(2)} KB`;
+            elements.compressionRatio.textContent = `Ratio promedio: ${ratio.toFixed(2)}%`;
+            
+            // Configurar botones de descarga
+            elements.downloadBtn.disabled = true;
+            elements.downloadZipBtn.classList.remove('d-none');
+            elements.downloadZipBtn.disabled = false;
+        }
+
+        /** Encripta datos con AES */
+        async function encryptData(data, password) {
+            try {
+                // 1. Convertir Blob a ArrayBuffer
+                const arrayBuffer = await data.arrayBuffer();
+                
+                // 2. Convertir a WordArray (manera más confiable)
+                const words = [];
+                const bytes = new Uint8Array(arrayBuffer);
+                for (let i = 0; i < bytes.length; i += 4) {
+                    words.push(
+                        (bytes[i] << 24) | 
+                        (bytes[i+1] << 16) | 
+                        (bytes[i+2] << 8) | 
+                        (bytes[i+3])
+                    );
+                }
+                const wordArray = CryptoJS.lib.WordArray.create(words, bytes.length);
+                
+                // 3. Generar salt y derivar clave
+                const salt = CryptoJS.lib.WordArray.random(128/8);
+                const key = CryptoJS.PBKDF2(password, salt, {
+                    keySize: 256/32,
+                    iterations: 1000
+                });
+                
+                // 4. Generar IV
+                const iv = CryptoJS.lib.WordArray.random(128/8);
+                
+                // 5. Encriptar
+                const encrypted = CryptoJS.AES.encrypt(wordArray, key, { 
+                    iv: iv,
+                    padding: CryptoJS.pad.Pkcs7,
+                    mode: CryptoJS.mode.CBC
+                });
+                
+                // 6. Convertir a formato compatible con Blob
+                const saltHex = salt.toString();
+                const ivHex = iv.toString();
+                const encryptedHex = encrypted.toString();
+                
+                // 7. Crear ArrayBuffer combinado
+                const combined = saltHex + ivHex + encryptedHex;
+                const combinedBytes = new TextEncoder().encode(combined);
+                
+                return {
+                    data: new Blob([combinedBytes], { type: 'application/octet-stream' }),
+                    method: 'AES-256-CBC'
+                };
+            } catch (error) {
+                console.error('Error detallado en encryptData:', error);
+                throw new Error('Error al encriptar los datos. Verifica la contraseña y los datos.');
+            }
+        }
+
+        /** Descifra datos con AES */
+        async function decryptData(data, password) {
+            try {
+                // Convertir datos a WordArray
+                const arrayBuffer = await data.arrayBuffer();
+                const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer);
+                const encryptedString = wordArray.toString(CryptoJS.enc.Utf8);
+                
+                // Extraer salt (primeros 32 caracteres)
+                const salt = CryptoJS.enc.Hex.parse(encryptedString.substr(0, 32));
+                
+                // Extraer IV (siguientes 32 caracteres)
+                const iv = CryptoJS.enc.Hex.parse(encryptedString.substr(32, 32));
+                
+                // Extraer datos encriptados (resto)
+                const encryptedData = encryptedString.substring(64);
+                
+                // Derivar clave
+                const key = CryptoJS.PBKDF2(password, salt, {
+                    keySize: 256/32,
+                    iterations: 1000
+                });
+                
+                // Descifrar
+                const decrypted = CryptoJS.AES.decrypt(encryptedData, key, { 
+                    iv: iv,
+                    padding: CryptoJS.pad.Pkcs7,
+                    mode: CryptoJS.mode.CBC
+                });
+                
+                // Convertir a Uint8Array
+                const decryptedArray = new Uint8Array(decrypted.sigBytes);
+                for (let i = 0; i < decrypted.sigBytes; i++) {
+                    decryptedArray[i] = (decrypted.words[Math.floor(i / 4)] >>> (24 - (i % 4) * 8)) & 0xff;
+                }
+                
+                return new Blob([decryptedArray], { type: 'application/octet-stream' });
+            } catch (error) {
+                console.error('Error en descifrado:', error);
+                throw new Error('CLAVE_INCORRECTA');
+            }
+        }
+
+        /** Descarga el archivo comprimido */
+        function downloadCompressedFile() {
+            if (!state.compressedBlob) {
+                alert('No hay datos comprimidos para descargar');
+                return;
+            }
+            
+            const fileName = `imagen_compresa_${Date.now()}.cimg`;
+            const url = URL.createObjectURL(state.compressedBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /** Descarga el archivo ZIP con múltiples imágenes comprimidas */
+        function downloadCompressedZip() {
+            if (!state.compressedBatch.length) {
+                alert('No hay archivos para comprimir');
+                return;
+            }
+            
+            const zip = new JSZip();
+            
+            // Agregar cada archivo comprimido al ZIP
+            state.compressedBatch.forEach(item => {
+                zip.file(item.name, item.blob);
+            });
+            
+            // Generar el ZIP y descargar
+            zip.generateAsync({ type: 'blob' }).then(content => {
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `imagenes_comprimidas_${Date.now()}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        /** Restaura la imagen desde el archivo comprimido */
+        async function restoreImage() {
+            try {
+                elements.restoreBtn.disabled = true;
+                elements.restoreBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Restaurando...';
+                elements.keyError.classList.add('d-none');
+                state.isKeyValid = false;
+                
+                const file = elements.compressedInput.files[0];
+                const decryptionKey = elements.decryptionKey.value.trim();
+                const restorePassword = elements.restorePassword.value;
+                
+                if (!file) {
+                    throw new Error('Por favor sube un archivo comprimido');
+                }
+                
+                if (!decryptionKey || decryptionKey.length !== 10) {
+                    throw new Error('La clave debe tener exactamente 10 caracteres');
+                }
+                
+                // Verificar tamaño del archivo
+                if (file.size === 0) {
+                    throw new Error('El archivo está vacío o corrupto');
+                }
+                
+                // Leer archivo completo
+                let arrayBuffer;
+                try {
+                    arrayBuffer = await readFileAsArrayBuffer(file);
+                } catch (error) {
+                    throw new Error('No se pudo leer el archivo. Puede estar corrupto.');
+                }
+                
+                // Validar tamaño mínimo del archivo (marca + metadatos mínimos)
+                if (arrayBuffer.byteLength < 10) {
+                    throw new Error('Archivo corrupto: tamaño insuficiente');
+                }
+                
+                const view = new DataView(arrayBuffer);
+                
+                // Verificar marca de archivo (0x1A 0x2B 0x3C 0x4D)
+                if (view.getUint8(0) !== 0x1A || view.getUint8(1) !== 0x2B || 
+                    view.getUint8(2) !== 0x3C || view.getUint8(3) !== 0x4D) {
+                    throw new Error('Formato de archivo inválido. No es un archivo .cimg válido.');
+                }
+                
+                // Obtener longitud de metadatos
+                const metadataLength = view.getUint16(4);
+                
+                if (metadataLength > 10000 || metadataLength < 10) { // Límite razonable para metadatos
+                    throw new Error('Archivo corrupto: metadatos inválidos');
+                }
+                
+                // Verificar que haya datos de imagen después de los metadatos
+                if (6 + metadataLength >= arrayBuffer.byteLength) {
+                    throw new Error('Archivo corrupto: no contiene datos de imagen');
+                }
+                
+                // Extraer metadatos (JSON)
+                let metadata;
+                try {
+                    const metadataBytes = new Uint8Array(arrayBuffer, 6, metadataLength);
+                    const metadataStr = new TextDecoder().decode(metadataBytes);
+                    metadata = JSON.parse(metadataStr);
+                } catch (error) {
+                    throw new Error('Error leyendo metadatos. Archivo puede estar corrupto.');
+                }
+                
+                // Verificar estructura básica de metadatos
+                if (!metadata || !metadata.k || !metadata.w || !metadata.h) {
+                    throw new Error('Metadatos incompletos o corruptos');
+                }
+                
+                // Verificar clave
+                if (metadata.k !== decryptionKey) {
+                    elements.keyError.textContent = 'Clave de seguridad incorrecta';
+                    elements.keyError.classList.remove('d-none');
+                    throw new Error('CLAVE_INCORRECTA');
+                }
+                
+                // Extraer datos de imagen
+                const imageData = new Uint8Array(arrayBuffer, 6 + metadataLength);
+                if (imageData.length === 0) {
+                    throw new Error('Archivo corrupto: no contiene datos de imagen');
+                }
+                
+                let imageBlob = new Blob([imageData], { type: 'application/octet-stream' });
+                
+                // Si fue encriptado, descifrar
+                if (metadata.e === 'aes') {
+                    if (!restorePassword) {
+                        throw new Error('Esta imagen fue encriptada. Por favor ingresa la contraseña adicional.');
+                    }
+                    
+                    try {
+                        imageBlob = await decryptData(imageBlob, restorePassword);
+                    } catch (error) {
+                        if (error.message === 'CLAVE_INCORRECTA') {
+                            elements.keyError.textContent = 'Contraseña adicional incorrecta';
+                            elements.keyError.classList.remove('d-none');
+                        }
+                        throw error;
+                    }
+                }
+                
+                // Verificar que los datos descifrados no estén vacíos
+                if (imageBlob.size === 0) {
+                    throw new Error('Los datos descifrados están vacíos');
+                }
+                
+                // Descomprimir imagen
+                let decompressedBlob;
+                try {
+                    decompressedBlob = await decompressData(imageBlob);
+                } catch (error) {
+                    throw new Error('Error descomprimiendo imagen. Archivo puede estar corrupto.');
+                }
+                
+                // Verificar si la imagen descomprimida es válida
+                if (decompressedBlob.size === 0) {
+                    throw new Error('La imagen descomprimida está vacía');
+                }
+                
+                // Marcar clave como válida
+                state.isKeyValid = true;
+                
+                // Mostrar imagen restaurada
+                let img;
+                try {
+                    img = await loadImage(decompressedBlob);
+                } catch (error) {
+                    throw new Error('La imagen restaurada no es válida. Verifica la clave y contraseña.');
+                }
+                
+                drawImageToCanvas(img, elements.restoredCanvas, elements.restoredCtx);
+                
+                // Mostrar información
+                elements.restoredSize.textContent = `Tamaño restaurado: ${(decompressedBlob.size / 1024 / 1024).toFixed(2)} MB`;
+                elements.restoredDimensions.textContent = `Dimensiones: ${img.width}x${img.height} px`;
+                
+                // Guardar imagen restaurada en estado
+                state.restoredImageBlob = decompressedBlob;
+                state.restoredImageType = metadata.f || 'png';
+                
+                // Mostrar resultados
+                elements.restoredPreviewContainer.style.display = 'block';
+                elements.restoredInfo.style.display = 'flex';
+                elements.downloadRestoredBtn.disabled = false;
+                
+            } catch (error) {
+                console.error('Error al restaurar:', error);
+                
+                let errorMessage = 'Error al restaurar la imagen. ';
+                if (error.message === 'CLAVE_INCORRECTA') {
+                    // No mostrar mensaje adicional, ya se mostró el error específico
+                    return;
+                } else if (error.message.includes('corrupto')) {
+                    errorMessage += error.message;
+                } else {
+                    errorMessage += 'Verifica que: 1) La clave es correcta, 2) La contraseña (si se usó), 3) El archivo no está corrupto.';
+                }
+                
+                alert(errorMessage);
+                
+                // Si la clave es incorrecta, generar una imagen corrupta
+                if (!state.isKeyValid) {
+                    generateCorruptImage();
+                }
+            } finally {
+                elements.restoreBtn.disabled = false;
+                elements.restoreBtn.innerHTML = '<i class="bi bi-file-earmark-image"></i> Restaurar Imagen';
+            }
+        }
+
+        /** Genera una imagen corrupta cuando la clave es incorrecta */
+        function generateCorruptImage() {
+            const canvas = elements.restoredCanvas;
+            const ctx = elements.restoredCtx;
+            
+            // Crear una imagen completamente negra con ruido aleatorio
+            canvas.width = 100;
+            canvas.height = 100;
+            
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                imageData.data[i] = Math.floor(Math.random() * 256);     // R
+                imageData.data[i+1] = Math.floor(Math.random() * 256);   // G
+                imageData.data[i+2] = Math.floor(Math.random() * 256);   // B
+                imageData.data[i+3] = 255;                               // A
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            
+            // Crear un blob corrupto
+            canvas.toBlob(function(blob) {
+                state.restoredImageBlob = blob;
+                state.restoredImageType = 'png';
+                
+                // Mostrar información falsa
+                elements.restoredSize.textContent = `Tamaño restaurado: ${(blob.size / 1024 / 1024).toFixed(2)} MB`;
+                elements.restoredDimensions.textContent = `Dimensiones: ${canvas.width}x${canvas.height} px`;
+                
+                // Mostrar resultados
+                elements.restoredPreviewContainer.style.display = 'block';
+                elements.restoredInfo.style.display = 'flex';
+                elements.downloadRestoredBtn.disabled = false;
+            }, 'image/png', 1.0);
+        }
+
+        /** Descarga la imagen restaurada */
+        function downloadRestoredImage() {
+            if (!state.restoredImageBlob) {
+                alert('No hay imagen restaurada para descargar');
+                return;
+            }
+            
+            // Determinar el tipo MIME y extensión basado en el formato original
+            let mimeType, extension;
+            switch(state.restoredImageType) {
+                case 'jpeg':
+                    mimeType = 'image/jpeg';
+                    extension = 'jpg';
+                    break;
+                case 'webp':
+                    mimeType = 'image/webp';
+                    extension = 'webp';
+                    break;
+                case 'png':
+                default:
+                    mimeType = 'image/png';
+                    extension = 'png';
+            }
+            
+            // Crear un blob con el tipo correcto
+            const blob = new Blob([state.restoredImageBlob], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `imagen_restaurada_${Date.now()}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /** Comprime datos binarios */
+        async function compressData(blob) {
+            if (window.CompressionStream) {
+                const stream = blob.stream();
+                const compressedStream = stream.pipeThrough(new CompressionStream('deflate'));
+                return new Response(compressedStream).blob();
+            } else {
+                // Fallback: usar solo el blob original
+                return blob;
+            }
+        }
+
+        /** Descomprime datos binarios */
+        async function decompressData(blob) {
+            if (window.DecompressionStream) {
+                const stream = blob.stream();
+                const decompressedStream = stream.pipeThrough(new DecompressionStream('deflate'));
+                return new Response(decompressedStream).blob();
+            } else {
+                // Fallback: asumir que no estaba comprimido
+                return blob;
+            }
+        }
+
+        /** Lee los metadatos EXIF de la imagen */
+        async function readExifData(file) {
+            try {
+                const arrayBuffer = await readFileAsArrayBuffer(file);
+                const tags = ExifReader.load(arrayBuffer);
+                state.exifData = tags;
+                
+                // Mostrar metadatos importantes
+                elements.originalExif.innerHTML = '';
+                
+                if (tags) {
+                    const exifContainer = document.createElement('div');
+                    exifContainer.className = 'mt-2';
+                    
+                    // Mostrar metadatos comunes
+                    const commonTags = {
+                        'Make': 'Fabricante',
+                        'Model': 'Modelo',
+                        'DateTimeOriginal': 'Fecha',
+                        'GPSLatitude': 'Latitud',
+                        'GPSLongitude': 'Longitud',
+                        'ImageWidth': 'Ancho',
+                        'ImageHeight': 'Alto'
+                    };
+                    
+                    for (const [tag, label] of Object.entries(commonTags)) {
+                        if (tags[tag]) {
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-secondary exif-badge';
+                            badge.title = `${label}: ${tags[tag].description || tags[tag].value}`;
+                            badge.textContent = label;
+                            exifContainer.appendChild(badge);
+                        }
+                    }
+                    
+                    elements.originalExif.appendChild(exifContainer);
+                }
+            } catch (error) {
+                console.log('No se pudieron leer los metadatos EXIF:', error);
+                state.exifData = null;
+            }
+        }
+
+        /** Analiza el tipo de imagen para compresión inteligente */
+        function analyzeImageType(img) {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            let colorCount = 0;
+            let edgeCount = 0;
+            let textLike = 0;
+            const colorMap = {};
+            
+            // Analizar píxeles para determinar tipo de imagen
+            for (let i = 0; i < data.length; i += 16) { // Muestreo cada 4 píxeles
+                const r = data[i];
+                const g = data[i+1];
+                const b = data[i+2];
+                const a = data[i+3];
+                
+                // Contar colores únicos
+                const colorKey = `${r},${g},${b}`;
+                if (!colorMap[colorKey]) {
+                    colorMap[colorKey] = true;
+                    colorCount++;
+                }
+                
+                // Detectar bordes (cambios bruscos de color)
+                if (i > 4) {
+                    const prevR = data[i-4];
+                    const prevG = data[i-3];
+                    const prevB = data[i-2];
+                    
+                    const diff = Math.abs(r - prevR) + Math.abs(g - prevG) + Math.abs(b - prevB);
+                    if (diff > 100) edgeCount++;
+                }
+                
+                // Detectar características de texto (alto contraste)
+                const contrast = (Math.max(r, g, b) - Math.min(r, g, b)) / 255;
+                if (contrast > 0.8) textLike++;
+            }
+            
+            // Determinar tipo de imagen basado en análisis
+            const totalPixels = (data.length / 16);
+            const edgeRatio = edgeCount / totalPixels;
+            const textRatio = textLike / totalPixels;
+            
+            if (colorCount < 256 && edgeRatio < 0.01) {
+                state.imageType = 'graphic'; // Gráfico con pocos colores
+                elements.imageTypeInfo.textContent = 'Tipo detectado: Gráfico (pocos colores) - Mejor compresión con PNG';
+            } else if (textRatio > 0.3) {
+                state.imageType = 'text'; // Imagen con texto
+                elements.imageTypeInfo.textContent = 'Tipo detectado: Texto/escaneado - Mejor compresión con alta calidad';
+            } else if (colorCount > 10000 || edgeRatio > 0.05) {
+                state.imageType = 'photo'; // Fotografía
+                elements.imageTypeInfo.textContent = 'Tipo detectado: Fotografía - Mejor compresión con WebP/JPEG';
+            } else {
+                state.imageType = 'mixed'; // Mixto
+                elements.imageTypeInfo.textContent = 'Tipo detectado: Mixto - Compresión equilibrada recomendada';
+            }
+            
+            // Ajustar configuración automática si está activo
+            if (elements.compressionMode.value === 'auto' || elements.compressionMode.value === 'storage' || elements.compressionMode.value === 'ultra') {
+                applyAutoSettings();
+            }
+        }
+
+        /** Aplica configuración automática basada en el tipo de imagen */
+        function applyAutoSettings() {
+            if (elements.compressionMode.value === 'storage') {
+                applyStorageSettings();
+                return;
+            } else if (elements.compressionMode.value === 'ultra') {
+                applyUltraCompressionSettings();
+                return;
+            }
+            
+            switch(state.imageType) {
+                case 'graphic':
+                    elements.qualitySlider.value = 100;
+                    elements.colorReductionSlider.value = 0;
+                    elements.compressionMethod.value = 'png';
+                    break;
+                case 'text':
+                    elements.qualitySlider.value = 90;
+                    elements.colorReductionSlider.value = 10;
+                    elements.compressionMethod.value = 'webp';
+                    break;
+                case 'photo':
+                    elements.qualitySlider.value = 85;
+                    elements.colorReductionSlider.value = 20;
+                    elements.compressionMethod.value = 'webp';
+                    break;
+                case 'mixed':
+                default:
+                    elements.qualitySlider.value = 80;
+                    elements.colorReductionSlider.value = 15;
+                    elements.compressionMethod.value = 'webp';
+            }
+            
+            // Actualizar valores mostrados
+            elements.qualityValue.textContent = elements.qualitySlider.value;
+            elements.colorReductionValue.textContent = elements.colorReductionSlider.value;
+        }
+
+        /** Aplica configuración óptima para almacenamiento en servidor */
+        function applyStorageSettings() {
+            // Configuración basada en el tipo de imagen pero optimizada para tamaño mínimo
+            switch(state.imageType) {
+                case 'graphic':
+                    // Para gráficos con pocos colores, PNG con paleta reducida
+                    elements.qualitySlider.value = 100;
+                    elements.colorReductionSlider.value = 60;
+                    elements.compressionMethod.value = 'png';
+                    break;
+                case 'text':
+                    // Para texto, alta calidad pero con compresión fuerte
+                    elements.qualitySlider.value = 70;
+                    elements.colorReductionSlider.value = 40;
+                    elements.compressionMethod.value = 'webp';
+                    break;
+                case 'photo':
+                    // Para fotos, balance entre calidad y tamaño
+                    elements.qualitySlider.value = 60;
+                    elements.colorReductionSlider.value = 50;
+                    elements.compressionMethod.value = 'webp';
+                    break;
+                case 'mixed':
+                default:
+                    // Configuración balanceada por defecto
+                    elements.qualitySlider.value = 65;
+                    elements.colorReductionSlider.value = 45;
+                    elements.compressionMethod.value = 'webp';
+            }
+            
+            // Actualizar valores mostrados
+            elements.qualityValue.textContent = elements.qualitySlider.value;
+            elements.colorReductionValue.textContent = elements.colorReductionSlider.value;
+            
+            // Mostrar mensaje especial para modo almacenamiento
+            elements.imageTypeInfo.textContent += ' (Modo Almacenamiento: Compresión optimizada para servidores)';
+        }
+
+        /** Aplica configuración para ultra compresión */
+        function applyUltraCompressionSettings() {
+            // Configuración extremadamente agresiva para máxima compresión
+            switch(state.imageType) {
+                case 'graphic':
+                    elements.qualitySlider.value = 100;
+                    elements.colorReductionSlider.value = 80; // Máxima reducción de colores
+                    elements.compressionMethod.value = 'png';
+                    break;
+                case 'text':
+                    elements.qualitySlider.value = 60; // Muy baja calidad
+                    elements.colorReductionSlider.value = 60; // Máxima reducción
+                    elements.compressionMethod.value = 'webp';
+                    break;
+                case 'photo':
+                    elements.qualitySlider.value = 50; // Calidad muy baja
+                    elements.colorReductionSlider.value = 70; // Reducción extrema
+                    elements.compressionMethod.value = 'webp';
+                    break;
+                case 'mixed':
+                default:
+                    elements.qualitySlider.value = 55;
+                    elements.colorReductionSlider.value = 65;
+                    elements.compressionMethod.value = 'webp';
+            }
+            
+            // Actualizar valores mostrados
+            elements.qualityValue.textContent = elements.qualitySlider.value;
+            elements.colorReductionValue.textContent = elements.colorReductionSlider.value;
+            
+            // Mostrar mensaje especial para ultra compresión
+            elements.imageTypeInfo.textContent += ' (Modo Ultra Compresión: Máxima reducción de tamaño con pérdida de calidad perceptible)';
+        }
+
+        /** ===== FUNCIONES DE UTILIDAD ===== */
+
+        /** Carga una imagen desde un Blob */
+        function loadImage(blob) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => {
+                    console.error('Error al cargar la imagen');
+                    reject(new Error('Error al cargar la imagen. El archivo puede estar corrupto o la clave es incorrecta.'));
+                };
+                img.src = URL.createObjectURL(blob);
+            });
+        }
+
+        /** Dibuja una imagen en un canvas */
+        function drawImageToCanvas(img, canvas, ctx) {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+        }
+
+        /** Lee un archivo como ArrayBuffer */
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => {
+                    console.error('Error al leer el archivo');
+                    reject(new Error('Error al leer el archivo comprimido.'));
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        /** Actualiza el slider de comparación */
+        function updateComparisonSlider() {
+            if (!elements.previewCanvas.width) return;
+            
+            const container = elements.comparisonContainer.getBoundingClientRect();
+            const position = 0.5; // Centrado por defecto
+            
+            elements.comparisonSlider.style.left = `${position * 100}%`;
+            elements.previewCanvas.style.clipPath = `polygon(0 0, ${position * 100}% 0, ${position * 100}% 100%, 0 100%)`;
+        }
+
+        /** Procesa el blob final para eliminación de metadatos */
+        function processFinalBlob(blob, format, removeMetadata, resolve) {
+            if (!removeMetadata) {
+                resolve(blob);
+                return;
+            }
+            
+            const imgClean = new Image();
+            imgClean.onload = () => {
+                const cleanCanvas = document.createElement('canvas');
+                cleanCanvas.width = imgClean.width;
+                cleanCanvas.height = imgClean.height;
+                const cleanCtx = cleanCanvas.getContext('2d');
+                cleanCtx.drawImage(imgClean, 0, 0);
+                
+                cleanCanvas.toBlob((cleanBlob) => {
+                    resolve(cleanBlob);
+                }, `image/${format}`);
+            };
+            imgClean.onerror = () => {
+                console.error('Error al procesar imagen limpia');
+                resolve(blob); // Fallback: devolver el blob original si hay error
+            };
+            imgClean.src = URL.createObjectURL(blob);
+        }
+    </script>
+</body>
+</html>

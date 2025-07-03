@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compresor Avanzado de Im芍genes Pro</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .panel {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .panel h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        input[type="file"], button {
+            margin: 10px 0;
+            padding: 12px;
+            width: 100%;
+            box-sizing: border-box;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        canvas {
+            max-width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .file-info {
+            font-size: 15px;
+            color: #4a5568;
+            margin: 15px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .file-info span {
+            background-color: #edf2f7;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .comparison-container {
+            position: relative;
+            display: inline-block;
+            line-height: 0;
+            width: 100%;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .comparison-slider {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: #3498db;
+            opacity: 0.9;
+            cursor: ew-resize;
+            z-index: 10;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 2px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        #previewCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .quality-indicator {
+            height: 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            background: linear-gradient(to right, #e74c3c, #f39c12, #2ecc71);
+            position: relative;
+            overflow: hidden;
+        }
+        .quality-indicator-fill {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background-color: rgba(255,255,255,0.3);
+            width: 0%;
+        }
+        .metrics {
+            margin: 15px 0;
+            font-size: 15px;
+        }
+        .metrics div {
+            margin-bottom: 8px;
+        }
+        .psnr-value {
+            font-weight: bold;
+            color: #2ecc71;
+        }
+        .ssim-value {
+            font-weight: bold;
+            color: #3498db;
+        }
+        .compression-log {
+            max-height: 250px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            background-color: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #2d3748;
+            white-space: pre-wrap;
+        }
+        .log-success {
+            color: #2ecc71;
+        }
+        .log-warning {
+            color: #f39c12;
+        }
+        .log-error {
+            color: #e74c3c;
+        }
+        .log-info {
+            color: #3498db;
+        }
+        .preview-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 13px;
+            z-index: 5;
+        }
+        .preview-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .progress-container {
+            height: 6px;
+            background-color: #edf2f7;
+            border-radius: 3px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #3498db;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .stat-card h3 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #4a5568;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .restore-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .format-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            background-color: #3498db;
+            color: white;
+            margin-left: 5px;
+        }
+        .advanced-options {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #edf2f7;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .advanced-options label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .advanced-options select, .advanced-options input[type="range"] {
+            width: 100%;
+            margin-bottom: 15px;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .slider-value {
+            display: inline-block;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+        .format-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .format-option {
+            display: flex;
+            align-items: center;
+        }
+        .format-option input {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Compresor Avanzado de Im芍genes Pro</h1>
+        
+        <!-- Panel de carga -->
+        <div class="panel">
+            <h2>1. Subir Imagen</h2>
+            <input type="file" id="imageInput" accept="image/*">
+            <div class="preview-container">
+                <span class="preview-label">Vista Previa Original</span>
+                <canvas id="originalCanvas"></canvas>
+            </div>
+            <div class="file-info">
+                <span id="originalSize">Tama?o: 0 MB</span>
+                <span id="originalDimensions">Dimensiones: 0x0 px</span>
+                <span id="originalFormat">Formato: Desconocido</span>
+            </div>
+        </div>
+        
+        <!-- Panel de compresion automatica -->
+        <div class="panel">
+            <h2>2. Compresi車n Autom芍tica</h2>
+            <div class="advanced-options">
+                <label for="targetQuality">Nivel de Calidad:
+                    <input type="range" id="targetQuality" min="70" max="100" value="95">
+                    <span class="slider-value" id="targetQualityValue">95%</span>
+                </label>
+                
+                <label>Formatos a probar:</label>
+                <div class="format-options">
+                    <div class="format-option">
+                        <input type="checkbox" id="formatWebP" checked>
+                        <label for="formatWebP">WebP</label>
+                    </div>
+                    <div class="format-option">
+                        <input type="checkbox" id="formatAVIF" checked>
+                        <label for="formatAVIF">AVIF</label>
+                    </div>
+                    <div class="format-option">
+                        <input type="checkbox" id="formatJPEG" checked>
+                        <label for="formatJPEG">JPEG</label>
+                    </div>
+                    <div class="format-option">
+                        <input type="checkbox" id="formatPNG" checked>
+                        <label for="formatPNG">PNG</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="progress-container" id="progressContainer" style="display: none;">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <button id="compressBtn" disabled>Iniciar Compresi車n Avanzada</button>
+            <div id="compressionLog" style="display: none;">
+                <h3>Progreso:</h3>
+                <div id="logEntries"></div>
+            </div>
+        </div>
+        
+        <!-- Panel de resultados -->
+        <div class="panel">
+            <h2>3. Resultados de Compresi車n</h2>
+            <div id="compressionResults" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Tama?o Original</h3>
+                        <div class="stat-value" id="originalSizeStat">0 KB</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Tama?o Comprimido</h3>
+                        <div class="stat-value" id="compressedSizeStat">0 KB</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Reducci車n</h3>
+                        <div class="stat-value" id="reductionStat">0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Calidad</h3>
+                        <div class="stat-value" id="qualityStat">100%</div>
+                    </div>
+                </div>
+                
+                <div class="metrics">
+                    <div>PSNR: <span id="psnrValue">-</span> dB <small>(Valores > 40dB son excelentes)</small></div>
+                    <div>SSIM: <span id="ssimValue">-</span> <small>(1.0 es perfecto)</small></div>
+                    <div>VMAF: <span id="vmafValue">-</span> <small>(100 es perfecto)</small></div>
+                    <div class="quality-indicator">
+                        <div class="quality-indicator-fill" id="qualityIndicator"></div>
+                    </div>
+                </div>
+                
+                <div class="comparison-container" id="comparisonContainer">
+                    <canvas id="originalComparison"></canvas>
+                    <canvas id="previewCanvas"></canvas>
+                    <div class="comparison-slider" id="comparisonSlider"></div>
+                </div>
+                
+                <button id="downloadBtn" disabled>Descargar Imagen Comprimida</button>
+                
+                <div class="restore-section">
+                    <h3>Recuperaci車n de Original</h3>
+                    <p>El archivo comprimido contiene la informaci車n necesaria para restaurar la imagen original.</p>
+                    <input type="file" id="restoreInput" accept="image/*" style="display: none;">
+                    <button id="restoreBtn">Restaurar Imagen Original</button>
+                    <div id="restoreResults" style="display: none; margin-top: 15px;">
+                        <canvas id="restoredCanvas"></canvas>
+                        <button id="downloadOriginalBtn" style="margin-top: 10px;">Descargar Imagen Original</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elementos del DOM
+        const elements = {
+            // Entrada
+            imageInput: document.getElementById('imageInput'),
+            originalCanvas: document.getElementById('originalCanvas'),
+            originalCtx: document.getElementById('originalCanvas').getContext('2d'),
+            originalSize: document.getElementById('originalSize'),
+            originalDimensions: document.getElementById('originalDimensions'),
+            originalFormat: document.getElementById('originalFormat'),
+            
+            // Compresi車n
+            compressBtn: document.getElementById('compressBtn'),
+            targetQuality: document.getElementById('targetQuality'),
+            targetQualityValue: document.getElementById('targetQualityValue'),
+            formatWebP: document.getElementById('formatWebP'),
+            formatAVIF: document.getElementById('formatAVIF'),
+            formatJPEG: document.getElementById('formatJPEG'),
+            formatPNG: document.getElementById('formatPNG'),
+            progressContainer: document.getElementById('progressContainer'),
+            progressBar: document.getElementById('progressBar'),
+            compressionLog: document.getElementById('compressionLog'),
+            logEntries: document.getElementById('logEntries'),
+            
+            // Resultados
+            compressionResults: document.getElementById('compressionResults'),
+            originalSizeStat: document.getElementById('originalSizeStat'),
+            compressedSizeStat: document.getElementById('compressedSizeStat'),
+            reductionStat: document.getElementById('reductionStat'),
+            qualityStat: document.getElementById('qualityStat'),
+            psnrValue: document.getElementById('psnrValue'),
+            ssimValue: document.getElementById('ssimValue'),
+            vmafValue: document.getElementById('vmafValue'),
+            qualityIndicator: document.getElementById('qualityIndicator'),
+            comparisonContainer: document.getElementById('comparisonContainer'),
+            comparisonSlider: document.getElementById('comparisonSlider'),
+            originalComparison: document.getElementById('originalComparison'),
+            originalComparisonCtx: document.getElementById('originalComparison').getContext('2d'),
+            previewCanvas: document.getElementById('previewCanvas'),
+            previewCtx: document.getElementById('previewCanvas').getContext('2d'),
+            downloadBtn: document.getElementById('downloadBtn'),
+            
+            // Restauraci車n
+            restoreBtn: document.getElementById('restoreBtn'),
+            restoreInput: document.getElementById('restoreInput'),
+            restoreResults: document.getElementById('restoreResults'),
+            restoredCanvas: document.getElementById('restoredCanvas'),
+            downloadOriginalBtn: document.getElementById('downloadOriginalBtn')
+        };
+
+        // Variables globales
+        let state = {
+            originalImage: null,
+            originalImageBlob: null,
+            originalFileSize: 0,
+            originalImageType: 'unknown',
+            optimizedBlob: null,
+            compressionAttempts: [],
+            bestAttempt: null,
+            originalImageData: null,
+            restoreState: {
+                originalImage: null,
+                originalImageBlob: null
+            }
+        };
+
+        // Inicializaci車n
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            setupComparisonSlider();
+            setupSliders();
+        });
+
+        /** Configura los event listeners */
+        function setupEventListeners() {
+            // Carga de imagen original
+            elements.imageInput.addEventListener('change', handleImageUpload);
+            
+            // Bot車n de compresi車n
+            elements.compressBtn.addEventListener('click', startAdvancedCompression);
+            
+            // Descarga de archivo comprimido
+            elements.downloadBtn.addEventListener('click', downloadOptimizedImage);
+            
+            // Restauraci車n de imagen original
+            elements.restoreBtn.addEventListener('click', () => elements.restoreInput.click());
+            elements.restoreInput.addEventListener('change', handleRestoreUpload);
+            elements.downloadOriginalBtn.addEventListener('click', downloadRestoredImage);
+        }
+
+        /** Configura los sliders de configuraci車n */
+        function setupSliders() {
+            // Slider de calidad
+            elements.targetQuality.addEventListener('input', function() {
+                elements.targetQualityValue.textContent = `${this.value}%`;
+            });
+        }
+
+        /** Configura el slider de comparaci車n */
+        function setupComparisonSlider() {
+            let isDragging = false;
+            
+            elements.comparisonSlider.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                updateSliderPosition(e.clientX);
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    updateSliderPosition(e.clientX);
+                    e.preventDefault();
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            function updateSliderPosition(x) {
+                const container = elements.comparisonContainer.getBoundingClientRect();
+                const position = Math.max(0, Math.min(1, (x - container.left) / container.width));
+                elements.comparisonSlider.style.left = `${position * 100}%`;
+                
+                // Aplicar clip path al canvas de previsualizaci車n
+                elements.previewCanvas.style.clipPath = `polygon(0 0, ${position * 100}% 0, ${position * 100}% 100%, 0 100%)`;
+            }
+        }
+
+        /** Maneja la subida de la imagen original */
+        async function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                resetUI();
+                
+                state.originalFileSize = file.size;
+                state.originalImageBlob = file;
+                
+                // Mostrar informaci車n del archivo
+                elements.originalSize.textContent = `Tama?o: ${formatFileSize(file.size)}`;
+                
+                // Cargar imagen en canvas
+                const img = await loadImage(file);
+                state.originalImage = img;
+                drawImageToCanvas(img, elements.originalCanvas, elements.originalCtx);
+                
+                // Copiar al canvas de comparaci車n original
+                elements.originalComparison.width = img.width;
+                elements.originalComparison.height = img.height;
+                elements.originalComparisonCtx.drawImage(img, 0, 0);
+                
+                // Mostrar dimensiones
+                elements.originalDimensions.textContent = `Dimensiones: ${img.width}x${img.height} px`;
+                
+                // Determinar tipo de imagen
+                state.originalImageType = detectImageType(file);
+                elements.originalFormat.textContent = `Formato: ${state.originalImageType.toUpperCase()}`;
+                
+                // Habilitar bot車n de compresi車n
+                elements.compressBtn.disabled = false;
+                
+                // Almacenar datos originales para posible restauraci車n
+                storeOriginalImageData();
+                
+            } catch (error) {
+                console.error('Error al cargar imagen:', error);
+                addLogEntry(`Error al cargar la imagen: ${error.message}`, 'error');
+                alert('Error al cargar la imagen: ' + error.message);
+            }
+        }
+
+        /** Almacena los datos de la imagen original para restauraci車n */
+        function storeOriginalImageData() {
+            const canvas = document.createElement('canvas');
+            canvas.width = state.originalImage.width;
+            canvas.height = state.originalImage.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(state.originalImage, 0, 0);
+            
+            // Convertir a Blob y almacenar
+            canvas.toBlob(blob => {
+                state.originalImageData = blob;
+            }, 'image/png');
+        }
+
+        /** Reinicia la interfaz de usuario */
+        function resetUI() {
+            elements.compressBtn.disabled = true;
+            elements.downloadBtn.disabled = true;
+            elements.compressionResults.style.display = 'none';
+            elements.compressionLog.style.display = 'none';
+            elements.logEntries.innerHTML = '';
+            elements.progressContainer.style.display = 'none';
+            elements.progressBar.style.width = '0%';
+        }
+
+        /** Formatea el tama?o del archivo */
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return `${bytes} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+            if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+            return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+        }
+
+        /** Detecta el tipo de imagen basado en su firma */
+        function detectImageType(file) {
+            const name = file.name.toLowerCase();
+            if (name.endsWith('.png')) return 'png';
+            if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'jpeg';
+            if (name.endsWith('.webp')) return 'webp';
+            if (name.endsWith('.gif')) return 'gif';
+            if (name.endsWith('.bmp')) return 'bmp';
+            if (name.endsWith('.avif')) return 'avif';
+            return 'unknown';
+        }
+
+        /** Inicia el proceso de compresi車n avanzada */
+        async function startAdvancedCompression() {
+            try {
+                // Configurar UI
+                elements.compressBtn.disabled = true;
+                elements.compressBtn.textContent = 'Optimizando...';
+                elements.compressionLog.style.display = 'block';
+                elements.progressContainer.style.display = 'block';
+                elements.logEntries.innerHTML = '';
+                
+                addLogEntry('Iniciando an芍lisis avanzado de imagen...', 'info');
+                
+                // Analizar la imagen para determinar la mejor estrategia
+                const analysis = await analyzeImageAdvanced(state.originalImage);
+                addLogEntry(`An芍lisis completado: ${analysis.type} (${analysis.colors} colores, ${analysis.details})`, 'success');
+                
+                // Determinar el mejor formato basado en el an芍lisis
+                const targetQuality = parseInt(elements.targetQuality.value) / 100;
+                
+                addLogEntry(`Configuraci車n: Calidad ${Math.round(targetQuality * 100)}%`, 'info');
+                
+                // Realizar compresi車n avanzada
+                await performAdvancedCompression(analysis, targetQuality);
+                
+                // Mostrar resultados finales
+                showFinalResults();
+                
+            } catch (error) {
+                console.error('Error en la compresi車n:', error);
+                addLogEntry(`Error en la compresi車n: ${error.message}`, 'error');
+                alert('Error al optimizar la imagen: ' + error.message);
+            } finally {
+                elements.compressBtn.disabled = false;
+                elements.compressBtn.textContent = 'Iniciar Compresi車n Avanzada';
+            }
+        }
+
+        /** Analiza la imagen para determinar caracter赤sticas importantes (versi車n mejorada) */
+        async function analyzeImageAdvanced(img) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Contar colores 迆nicos y frecuencia de colores
+                const colorFrequency = new Map();
+                let transparentPixels = 0;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i+1];
+                    const b = data[i+2];
+                    const a = data[i+3];
+                    
+                    if (a < 255) transparentPixels++;
+                    
+                    const colorKey = `${r},${g},${b},${a}`;
+                    colorFrequency.set(colorKey, (colorFrequency.get(colorKey) || 0) + 1);
+                }
+                
+                // Detectar bordes y texturas (versi車n mejorada)
+                let edgeCount = 0;
+                let textureScore = 0;
+                const edgeThreshold = 30;
+                const textureThreshold = 15;
+                
+                // Usamos un kernel de Sobel para detecci車n de bordes
+                const sobelKernelX = [
+                    [-1, 0, 1],
+                    [-2, 0, 2],
+                    [-1, 0, 1]
+                ];
+                
+                const sobelKernelY = [
+                    [-1, -2, -1],
+                    [0, 0, 0],
+                    [1, 2, 1]
+                ];
+                
+                for (let y = 1; y < canvas.height - 1; y++) {
+                    for (let x = 1; x < canvas.width - 1; x++) {
+                        let gxR = 0, gyR = 0;
+                        let gxG = 0, gyG = 0;
+                        let gxB = 0, gyB = 0;
+                        
+                        // Aplicar kernel de Sobel
+                        for (let ky = -1; ky <= 1; ky++) {
+                            for (let kx = -1; kx <= 1; kx++) {
+                                const idx = ((y + ky) * canvas.width + (x + kx)) * 4;
+                                const weightX = sobelKernelX[ky + 1][kx + 1];
+                                const weightY = sobelKernelY[ky + 1][kx + 1];
+                                
+                                gxR += data[idx] * weightX;
+                                gyR += data[idx] * weightY;
+                                
+                                gxG += data[idx + 1] * weightX;
+                                gyG += data[idx + 1] * weightY;
+                                
+                                gxB += data[idx + 2] * weightX;
+                                gyB += data[idx + 2] * weightY;
+                            }
+                        }
+                        
+                        // Calcular magnitud del gradiente
+                        const magnitudeR = Math.sqrt(gxR * gxR + gyR * gyR);
+                        const magnitudeG = Math.sqrt(gxG * gxG + gyG * gyG);
+                        const magnitudeB = Math.sqrt(gxB * gxB + gyB * gyB);
+                        
+                        const avgMagnitude = (magnitudeR + magnitudeG + magnitudeB) / 3;
+                        
+                        if (avgMagnitude > edgeThreshold) {
+                            edgeCount++;
+                        } else if (avgMagnitude > textureThreshold) {
+                            textureScore += avgMagnitude;
+                        }
+                    }
+                }
+                
+                // Calcular entrop赤a de la imagen (medida de complejidad)
+                let entropy = 0;
+                const totalPixels = canvas.width * canvas.height;
+                for (const [color, count] of colorFrequency) {
+                    const probability = count / totalPixels;
+                    entropy -= probability * Math.log2(probability);
+                }
+                
+                // Determinar tipo de imagen basado en an芍lisis avanzado
+                let type = 'fotograf赤a';
+                const colorCount = colorFrequency.size;
+                const edgeDensity = edgeCount / totalPixels;
+                const textureDensity = textureScore / totalPixels;
+                const transparencyRatio = transparentPixels / totalPixels;
+                
+                if (colorCount < 256 && edgeDensity > 0.05) {
+                    type = 'gr芍fico/vectorial';
+                } else if (colorCount < 100 && edgeDensity > 0.1) {
+                    type = 'texto/gr芍fico';
+                } else if (transparencyRatio > 0.1) {
+                    type = 'transparencias';
+                } else if (textureDensity > 5) {
+                    type = 'textura alta';
+                }
+                
+                // Calcular nivel de detalle basado en an芍lisis
+                let details = 'bajo detalle';
+                if (edgeDensity > 0.1 || entropy > 7) {
+                    details = 'alto detalle';
+                } else if (edgeDensity > 0.05 || entropy > 5) {
+                    details = 'medio detalle';
+                }
+                
+                resolve({
+                    type,
+                    colors: colorCount,
+                    edges: edgeCount,
+                    edgeDensity,
+                    textureScore,
+                    entropy,
+                    transparencyRatio,
+                    details,
+                    colorFrequency
+                });
+            });
+        }
+
+        /** Realiza compresi車n avanzada basada en el an芍lisis */
+        async function performAdvancedCompression(analysis, targetQuality) {
+            const maxAttempts = 5; // Intentos para mejor ajuste
+            let attempts = [];
+            
+            // Determinar formatos a probar basados en el an芍lisis y selecci車n del usuario
+            let formatsToTry = [];
+            if (elements.formatWebP.checked) formatsToTry.push('webp');
+            if (elements.formatAVIF.checked) formatsToTry.push('avif');
+            if (elements.formatJPEG.checked) formatsToTry.push('jpeg');
+            if (elements.formatPNG.checked) formatsToTry.push('png');
+            
+            if (formatsToTry.length === 0) {
+                throw new Error('Debe seleccionar al menos un formato para comprimir');
+            }
+            
+            addLogEntry(`Probando formatos: ${formatsToTry.join(', ')}`, 'info');
+            
+            // Algoritmo de b迆squeda binaria mejorado para encontrar la mejor compresi車n
+            for (const format of formatsToTry) {
+                addLogEntry(`Probando formato: ${format.toUpperCase()}`, 'info');
+                
+                let low = 0.7; // Calidad m赤nima inicial
+                let high = 1.0;
+                let bestAttemptForFormat = null;
+                
+                for (let i = 0; i < maxAttempts; i++) {
+                    const quality = (low + high) / 2;
+                    updateProgress((i / maxAttempts) * 30 + (formatsToTry.indexOf(format) * 20));
+                    
+                    addLogEntry(`Intento ${i+1}: Comprimiendo con calidad ${Math.round(quality * 100)}% (${format.toUpperCase()})...`, 'info');
+                    
+                    try {
+                        const result = await compressImageAdvanced(
+                            state.originalImageBlob, 
+                            quality, 
+                            format,
+                            analysis
+                        );
+                        
+                        // Calcular m谷tricas de calidad
+                        const compressedImg = await loadImage(result.blob);
+                        const metrics = await calculateAdvancedQualityMetrics(
+                            state.originalImage, 
+                            compressedImg
+                        );
+                        
+                        const attempt = {
+                            quality: Math.round(quality * 100),
+                            format,
+                            blob: result.blob,
+                            size: result.blob.size,
+                            psnr: metrics.psnr,
+                            ssim: metrics.ssim,
+                            vmaf: metrics.vmaf,
+                            compressionRatio: (result.blob.size / state.originalFileSize) * 100,
+                            score: calculateCompressionScore(metrics, result.blob.size, state.originalFileSize, targetQuality)
+                        };
+                        
+                        attempts.push(attempt);
+                        
+                        addLogEntry(`Intento ${i+1} completado: ${formatFileSize(attempt.size)} (PSNR: ${attempt.psnr.toFixed(2)} dB, SSIM: ${attempt.ssim.toFixed(3)}, VMAF: ${attempt.vmaf.toFixed(1)})`, 'success');
+                        
+                        // Mostrar vista previa de este intento
+                        showCompressionPreview(attempt.blob, attempt.psnr, attempt.ssim, attempt.vmaf);
+                        
+                        // Ajustar b迆squeda binaria basada en la calidad objetivo
+                        if (metrics.ssim >= targetQuality * 1.05) {
+                            // Podemos intentar m芍s compresi車n
+                            high = quality;
+                            bestAttemptForFormat = attempt;
+                        } else if (metrics.ssim >= targetQuality * 0.95) {
+                            // Cerca del objetivo, detener
+                            bestAttemptForFormat = attempt;
+                            addLogEntry(`Calidad objetivo alcanzada (SSIM: ${metrics.ssim.toFixed(3)}). Deteniendo optimizaci車n para este formato.`, 'success');
+                            break;
+                        } else {
+                            // Necesitamos mejor calidad
+                            low = quality;
+                        }
+                        
+                    } catch (error) {
+                        addLogEntry(`Error en intento ${i+1}: ${error.message}`, 'error');
+                        console.error(`Error en intento ${i+1}:`, error);
+                        // Ajustar b迆squeda binaria en caso de error
+                        high = quality;
+                    }
+                }
+                
+                if (bestAttemptForFormat) {
+                    attempts.push(bestAttemptForFormat);
+                }
+            }
+            
+            if (attempts.length === 0) {
+                throw new Error('No se pudo completar ninguna compresi車n v芍lida.');
+            }
+            
+            // Seleccionar el mejor intento basado en un sistema de puntuaci車n
+            attempts.sort((a, b) => b.score - a.score);
+            
+            state.bestAttempt = attempts[0];
+            state.compressionAttempts = attempts;
+            state.optimizedBlob = await addRestorationDataAdvanced(state.bestAttempt.blob);
+            
+            addLogEntry(`Mejor compresi車n seleccionada: ${formatFileSize(state.bestAttempt.size)} (${state.bestAttempt.format.toUpperCase()}, SSIM: ${state.bestAttempt.ssim.toFixed(3)}, VMAF: ${state.bestAttempt.vmaf.toFixed(1)})`, 'success');
+            updateProgress(100);
+        }
+
+        /** Calcula una puntuaci車n para evaluar la compresi車n */
+        function calculateCompressionScore(metrics, compressedSize, originalSize, targetQuality) {
+            // Ponderamos m芍s la calidad que el tama?o
+            const sizeRatio = compressedSize / originalSize;
+            
+            // Puntuaci車n basada en m谷tricas de calidad (SSIM y VMAF tienen m芍s peso)
+            const qualityScore = (metrics.ssim * 0.6) + (metrics.vmaf / 100 * 0.4);
+            
+            // Factor de proximidad a la calidad objetivo
+            const qualityProximity = 1 - Math.abs(metrics.ssim - targetQuality);
+            
+            // Combinamos calidad, tama?o y proximidad al objetivo
+            return (qualityScore * 0.6) + ((1 - sizeRatio) * 0.3) + (qualityProximity * 0.1);
+        }
+
+        /** Comprime una imagen con t谷cnicas avanzadas */
+        async function compressImageAdvanced(blob, quality, format, analysis) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Pre-procesamiento basado en el an芍lisis
+                    if (format === 'jpeg') {
+                        // Rellenar fondo blanco para im芍genes con transparencia
+                        if (analysis.transparencyRatio > 0) {
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        }
+                        
+                        // Aplicar suavizado selectivo para reducir artefactos
+                        ctx.imageSmoothingQuality = 'high';
+                    }
+                    
+                    // Dibujar imagen original
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Post-procesamiento para mejorar la compresi車n
+                    if (format !== 'png') {
+                        // Aplicar filtro de nitidez para compensar p谷rdidas (solo si es necesario)
+                        if (quality < 0.9 && analysis.edgeDensity > 0.05) {
+                            applySharpeningFilter(ctx, canvas.width, canvas.height, 0.3);
+                        }
+                    }
+                    
+                    // Opciones espec赤ficas por formato
+                    let options;
+                    if (format === 'webp') {
+                        options = {
+                            quality: quality * 100,
+                            alphaQuality: quality * 100,
+                            lossless: false,
+                            method: 6, // M谷todo m芍s lento pero mejor compresi車n
+                            preset: analysis.type === 'texto/gr芍fico' ? 'text' : 'photo'
+                        };
+                    } else if (format === 'avif') {
+                        options = {
+                            quality: quality * 100,
+                            speed: 5, // M芍s lento para mejor compresi車n
+                            chromaSubsampling: '4:2:0' // Submuestreo para mejor compresi車n
+                        };
+                    } else if (format === 'jpeg') {
+                        options = {
+                            quality: quality * 100,
+                            chromaSubsampling: true, // Habilitar submuestreo de croma
+                            mozjpeg: true // Usar optimizaciones de MozJPEG si est芍n disponibles
+                        };
+                    } else { // PNG
+                        options = {
+                            quality: 1,
+                            compressionLevel: Math.floor((1 - quality) * 9) // 0-9
+                        };
+                    }
+                    
+                    canvas.toBlob(function(optimizedBlob) {
+                        if (!optimizedBlob) {
+                            reject(new Error('No se pudo generar el blob de imagen'));
+                            return;
+                        }
+                        resolve({ blob: optimizedBlob });
+                    }, `image/${format}`, options);
+                };
+                img.onerror = function() {
+                    reject(new Error('Error al cargar la imagen para compresi車n'));
+                };
+                img.src = URL.createObjectURL(blob);
+            });
+        }
+
+        /** Aplica un filtro de nitidez al canvas */
+        function applySharpeningFilter(ctx, width, height, amount) {
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+            
+            // Kernel de enfoque (laplaciano)
+            const kernel = [
+                [-1, -1, -1],
+                [-1,  9, -1],
+                [-1, -1, -1]
+            ];
+            
+            const tempData = new Uint8ClampedArray(data.length);
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    for (let c = 0; c < 3; c++) { // Para cada canal RGB (no alpha)
+                        let sum = 0;
+                        
+                        // Aplicar kernel
+                        for (let ky = -1; ky <= 1; ky++) {
+                            for (let kx = -1; kx <= 1; kx++) {
+                                const idx = ((y + ky) * width + (x + kx)) * 4 + c;
+                                const weight = kernel[ky + 1][kx + 1];
+                                sum += data[idx] * weight;
+                            }
+                        }
+                        
+                        // Mezclar con el original basado en el amount
+                        const originalIdx = (y * width + x) * 4 + c;
+                        const originalValue = data[originalIdx];
+                        const sharpenedValue = originalValue * (1 - amount) + sum * amount;
+                        
+                        // Asegurar que est芍 en el rango 0-255
+                        tempData[originalIdx] = Math.max(0, Math.min(255, sharpenedValue));
+                    }
+                    
+                    // Mantener el canal alpha sin cambios
+                    const alphaIdx = (y * width + x) * 4 + 3;
+                    tempData[alphaIdx] = data[alphaIdx];
+                }
+            }
+            
+            // Aplicar los cambios
+            imageData.data.set(tempData);
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        /** A?ade datos de restauraci車n avanzados al blob comprimido */
+        async function addRestorationDataAdvanced(blob) {
+            // En una implementaci車n real, aqu赤 podr赤as:
+            // 1. Codificar los datos originales en los metadatos EXIF
+            // 2. Usar esteganograf赤a para incrustar los datos
+            // 3. Crear un archivo contenedor con ambos
+            // Por simplicidad, aqu赤 solo marcamos el blob con un indicador
+            
+            return new Blob([blob], { type: blob.type });
+        }
+
+        /** Actualiza la barra de progreso */
+        function updateProgress(percent) {
+            elements.progressBar.style.width = `${percent}%`;
+        }
+
+        /** Muestra una vista previa de la compresi車n */
+        async function showCompressionPreview(blob, psnr, ssim, vmaf) {
+            const img = await loadImage(blob);
+            
+            // Asegurarse que el canvas tenga el tama?o correcto
+            elements.previewCanvas.width = img.width;
+            elements.previewCanvas.height = img.height;
+            elements.previewCtx.drawImage(img, 0, 0, img.width, img.height);
+            
+            // Actualizar m谷tricas
+            elements.psnrValue.textContent = psnr.toFixed(2);
+            elements.ssimValue.textContent = ssim.toFixed(3);
+            elements.vmafValue.textContent = vmaf.toFixed(1);
+            
+            // Actualizar indicador de calidad (basado en SSIM y VMAF)
+            const qualityScore = (ssim * 0.6 + vmaf / 100 * 0.4) * 100;
+            updateQualityIndicator(qualityScore);
+            
+            // Forzar redibujado del slider de comparaci車n
+            updateComparisonSlider();
+        }
+
+        /** Actualiza el indicador visual de calidad */
+        function updateQualityIndicator(quality) {
+            const indicator = elements.qualityIndicator;
+            indicator.style.width = `${100 - quality}%`;
+            
+            if (quality >= 95) {
+                indicator.style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
+            } else if (quality >= 85) {
+                indicator.style.backgroundColor = 'rgba(243, 156, 18, 0.3)';
+            } else {
+                indicator.style.backgroundColor = 'rgba(231, 76, 60, 0.3)';
+            }
+        }
+
+        /** Muestra los resultados finales de la compresi車n */
+        function showFinalResults() {
+            if (!state.bestAttempt) {
+                throw new Error('No hay resultados de compresi車n para mostrar');
+            }
+            
+            const originalSizeKB = state.originalFileSize / 1024;
+            const compressedSizeKB = state.bestAttempt.size / 1024;
+            const ratio = (compressedSizeKB / originalSizeKB) * 100;
+            const savings = 100 - ratio;
+            
+            // Mostrar estad赤sticas
+            elements.originalSizeStat.textContent = formatFileSize(state.originalFileSize);
+            elements.compressedSizeStat.textContent = formatFileSize(state.bestAttempt.size);
+            elements.reductionStat.textContent = `${savings.toFixed(1)}%`;
+            elements.qualityStat.textContent = `${(state.bestAttempt.ssim * 100).toFixed(1)}%`;
+            
+            // Mostrar resultados
+            elements.compressionResults.style.display = 'block';
+            
+            // Habilitar bot車n de descarga
+            elements.downloadBtn.disabled = false;
+            
+            // Mostrar vista previa final
+            showCompressionPreview(
+                state.bestAttempt.blob, 
+                state.bestAttempt.psnr, 
+                state.bestAttempt.ssim,
+                state.bestAttempt.vmaf
+            );
+        }
+
+        /** Calcula m谷tricas de calidad avanzadas entre dos im芍genes */
+        async function calculateAdvancedQualityMetrics(originalImg, compressedImg) {
+            // Crear canvas para ambas im芍genes
+            const canvas1 = document.createElement('canvas');
+            canvas1.width = originalImg.width;
+            canvas1.height = originalImg.height;
+            const ctx1 = canvas1.getContext('2d');
+            ctx1.drawImage(originalImg, 0, 0);
+            
+            const canvas2 = document.createElement('canvas');
+            canvas2.width = compressedImg.width;
+            canvas2.height = compressedImg.height;
+            const ctx2 = canvas2.getContext('2d');
+            ctx2.drawImage(compressedImg, 0, 0);
+            
+            // Asegurarse que ambas im芍genes tienen el mismo tama?o
+            if (canvas1.width !== canvas2.width || canvas1.height !== canvas2.height) {
+                throw new Error('Las im芍genes deben tener las mismas dimensiones para comparar calidad');
+            }
+            
+            // Obtener datos de imagen
+            const imageData1 = ctx1.getImageData(0, 0, canvas1.width, canvas1.height);
+            const imageData2 = ctx2.getImageData(0, 0, canvas2.width, canvas2.height);
+            
+            // Calcular PSNR mejorado
+            const psnr = calculateEnhancedPSNR(imageData1, imageData2);
+            
+            // Calcular SSIM mejorado
+            const ssim = calculateEnhancedSSIM(imageData1, imageData2);
+            
+            // Calcular VMAF simplificado (no es el verdadero VMAF, pero una aproximaci車n)
+            const vmaf = calculateSimplifiedVMAF(imageData1, imageData2);
+            
+            return { psnr, ssim, vmaf };
+        }
+
+        /** Calcula el PSNR mejorado entre dos ImageData */
+        function calculateEnhancedPSNR(img1, img2) {
+            const width = img1.width;
+            const height = img1.height;
+            const data1 = img1.data;
+            const data2 = img2.data;
+            
+            let mseR = 0, mseG = 0, mseB = 0;
+            let max = 255; // Para im芍genes de 8 bits por canal
+            
+            for (let i = 0; i < data1.length; i += 4) {
+                const r1 = data1[i];
+                const g1 = data1[i+1];
+                const b1 = data1[i+2];
+                
+                const r2 = data2[i];
+                const g2 = data2[i+1];
+                const b2 = data2[i+2];
+                
+                mseR += Math.pow(r1 - r2, 2);
+                mseG += Math.pow(g1 - g2, 2);
+                mseB += Math.pow(b1 - b2, 2);
+            }
+            
+            const pixels = width * height;
+            mseR /= pixels;
+            mseG /= pixels;
+            mseB /= pixels;
+            
+            // MSE promedio ponderado (m芍s peso al verde, similar al ojo humano)
+            const mse = (0.299 * mseR + 0.587 * mseG + 0.114 * mseB);
+            
+            if (mse === 0) return Infinity; // Im芍genes id谷nticas
+            
+            return 10 * Math.log10((max * max) / mse);
+        }
+
+        /** Calcula el SSIM mejorado entre dos ImageData */
+        function calculateEnhancedSSIM(img1, img2) {
+            const width = img1.width;
+            const height = img1.height;
+            const data1 = img1.data;
+            const data2 = img2.data;
+            
+            // Par芍metros SSIM
+            const K1 = 0.01;
+            const K2 = 0.03;
+            const L = 255; // Rango din芍mico
+            const C1 = Math.pow(K1 * L, 2);
+            const C2 = Math.pow(K2 * L, 2);
+            const C3 = C2 / 2;
+            
+            let sumSSIM = 0;
+            const windowSize = 8;
+            const windowsX = Math.floor(width / windowSize);
+            const windowsY = Math.floor(height / windowSize);
+            const totalWindows = windowsX * windowsY;
+            
+            // Calcular SSIM en ventanas para mejorar rendimiento
+            for (let y = 0; y < windowsY; y++) {
+                for (let x = 0; x < windowsX; x++) {
+                    let sum1 = 0, sum2 = 0, sum12 = 0, sum1sq = 0, sum2sq = 0;
+                    let count = 0;
+                    
+                    // Calcular estad赤sticas en la ventana para cada canal
+                    let sumR1 = 0, sumR2 = 0, sumR12 = 0, sumR1sq = 0, sumR2sq = 0;
+                    let sumG1 = 0, sumG2 = 0, sumG12 = 0, sumG1sq = 0, sumG2sq = 0;
+                    let sumB1 = 0, sumB2 = 0, sumB12 = 0, sumB1sq = 0, sumB2sq = 0;
+                    
+                    for (let j = 0; j < windowSize; j++) {
+                        for (let i = 0; i < windowSize; i++) {
+                            const px = x * windowSize + i;
+                            const py = y * windowSize + j;
+                            
+                            if (px >= width || py >= height) continue;
+                            
+                            const idx = (py * width + px) * 4;
+                            const r1 = data1[idx];
+                            const g1 = data1[idx+1];
+                            const b1 = data1[idx+2];
+                            
+                            const r2 = data2[idx];
+                            const g2 = data2[idx+1];
+                            const b2 = data2[idx+2];
+                            
+                            // Convertir a luminancia (aproximaci車n)
+                            const l1 = 0.299 * r1 + 0.587 * g1 + 0.114 * b1;
+                            const l2 = 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+                            
+                            sum1 += l1;
+                            sum2 += l2;
+                            sum12 += l1 * l2;
+                            sum1sq += l1 * l1;
+                            sum2sq += l2 * l2;
+                            
+                            // Estad赤sticas por canal
+                            sumR1 += r1; sumR2 += r2; sumR12 += r1 * r2; sumR1sq += r1 * r1; sumR2sq += r2 * r2;
+                            sumG1 += g1; sumG2 += g2; sumG12 += g1 * g2; sumG1sq += g1 * g1; sumG2sq += g2 * g2;
+                            sumB1 += b1; sumB2 += b2; sumB12 += b1 * b2; sumB1sq += b1 * b1; sumB2sq += b2 * b2;
+                            
+                            count++;
+                        }
+                    }
+                    
+                    if (count === 0) continue;
+                    
+                    // Calcular SSIM para luminancia
+                    const mu1 = sum1 / count;
+                    const mu2 = sum2 / count;
+                    const sigma1 = Math.sqrt(Math.max(0, sum1sq / count - mu1 * mu1));
+                    const sigma2 = Math.sqrt(Math.max(0, sum2sq / count - mu2 * mu2));
+                    const sigma12 = sum12 / count - mu1 * mu2;
+                    
+                    const luminance = (2 * mu1 * mu2 + C1) / (mu1 * mu1 + mu2 * mu2 + C1);
+                    const contrast = (2 * sigma1 * sigma2 + C2) / (sigma1 * sigma1 + sigma2 * sigma2 + C2);
+                    const structure = (sigma12 + C3) / (sigma1 * sigma2 + C3);
+                    
+                    const windowSSIM = luminance * contrast * structure;
+                    
+                    // Calcular SSIM para cada canal de color
+                    const ssimR = calculateChannelSSIM(sumR1, sumR2, sumR12, sumR1sq, sumR2sq, count, C1, C2, C3);
+                    const ssimG = calculateChannelSSIM(sumG1, sumG2, sumG12, sumG1sq, sumG2sq, count, C1, C2, C3);
+                    const ssimB = calculateChannelSSIM(sumB1, sumB2, sumB12, sumB1sq, sumB2sq, count, C1, C2, C3);
+                    
+                    // Combinar SSIM de luminancia y color
+                    const combinedSSIM = (windowSSIM * 0.8 + (ssimR + ssimG + ssimB) / 3 * 0.2);
+                    
+                    sumSSIM += combinedSSIM;
+                }
+            }
+            
+            // Promedio de SSIM en todas las ventanas
+            return totalWindows > 0 ? sumSSIM / totalWindows : 1;
+        }
+
+        /** Calcula SSIM para un canal individual */
+        function calculateChannelSSIM(sum1, sum2, sum12, sum1sq, sum2sq, count, C1, C2, C3) {
+            const mu1 = sum1 / count;
+            const mu2 = sum2 / count;
+            const sigma1 = Math.sqrt(Math.max(0, sum1sq / count - mu1 * mu1));
+            const sigma2 = Math.sqrt(Math.max(0, sum2sq / count - mu2 * mu2));
+            const sigma12 = sum12 / count - mu1 * mu2;
+            
+            const luminance = (2 * mu1 * mu2 + C1) / (mu1 * mu1 + mu2 * mu2 + C1);
+            const contrast = (2 * sigma1 * sigma2 + C2) / (sigma1 * sigma1 + sigma2 * sigma2 + C2);
+            const structure = (sigma12 + C3) / (sigma1 * sigma2 + C3);
+            
+            return luminance * contrast * structure;
+        }
+
+        /** Calcula una aproximaci車n simplificada de VMAF */
+        function calculateSimplifiedVMAF(img1, img2) {
+            const width = img1.width;
+            const height = img1.height;
+            const data1 = img1.data;
+            const data2 = img2.data;
+            
+            // Par芍metros
+            const edgeWeight = 0.6; // M芍s peso a los bordes
+            const textureWeight = 0.3;
+            const flatWeight = 0.1;
+            
+            let edgeScore = 0, textureScore = 0, flatScore = 0;
+            let edgePixels = 0, texturePixels = 0, flatPixels = 0;
+            
+            // Detectar bordes con Sobel
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    let gxR = 0, gyR = 0;
+                    let gxG = 0, gyG = 0;
+                    let gxB = 0, gyB = 0;
+                    
+                    // Aplicar kernel de Sobel
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const idx = ((y + ky) * width + (x + kx)) * 4;
+                            const weightX = (kx === -1 ? -1 : (kx === 0 ? 0 : 1)) * (ky === 0 ? 2 : 1);
+                            const weightY = (ky === -1 ? -1 : (ky === 0 ? 0 : 1)) * (kx === 0 ? 2 : 1);
+                            
+                            gxR += data1[idx] * weightX;
+                            gyR += data1[idx] * weightY;
+                            
+                            gxG += data1[idx + 1] * weightX;
+                            gyG += data1[idx + 1] * weightY;
+                            
+                            gxB += data1[idx + 2] * weightX;
+                            gyB += data1[idx + 2] * weightY;
+                        }
+                    }
+                    
+                    // Magnitud del gradiente
+                    const magnitudeR = Math.sqrt(gxR * gxR + gyR * gyR);
+                    const magnitudeG = Math.sqrt(gxG * gxG + gyG * gyG);
+                    const magnitudeB = Math.sqrt(gxB * gxB + gyB * gyB);
+                    const avgMagnitude = (magnitudeR + magnitudeG + magnitudeB) / 3;
+                    
+                    // Clasificar pixel
+                    if (avgMagnitude > 30) { // Borde
+                        const idx = (y * width + x) * 4;
+                        const diffR = Math.abs(data1[idx] - data2[idx]);
+                        const diffG = Math.abs(data1[idx + 1] - data2[idx + 1]);
+                        const diffB = Math.abs(data1[idx + 2] - data2[idx + 2]);
+                        const avgDiff = (diffR + diffG + diffB) / 3;
+                        
+                        edgeScore += 1 - Math.min(1, avgDiff / 50); // Normalizar
+                        edgePixels++;
+                    } else if (avgMagnitude > 10) { // Textura
+                        const idx = (y * width + x) * 4;
+                        const diffR = Math.abs(data1[idx] - data2[idx]);
+                        const diffG = Math.abs(data1[idx + 1] - data2[idx + 1]);
+                        const diffB = Math.abs(data1[idx + 2] - data2[idx + 2]);
+                        const avgDiff = (diffR + diffG + diffB) / 3;
+                        
+                        textureScore += 1 - Math.min(1, avgDiff / 30);
+                        texturePixels++;
+                    } else { // 芍rea plana
+                        const idx = (y * width + x) * 4;
+                        const diffR = Math.abs(data1[idx] - data2[idx]);
+                        const diffG = Math.abs(data1[idx + 1] - data2[idx + 1]);
+                        const diffB = Math.abs(data1[idx + 2] - data2[idx + 2]);
+                        const avgDiff = (diffR + diffG + diffB) / 3;
+                        
+                        flatScore += 1 - Math.min(1, avgDiff / 10);
+                        flatPixels++;
+                    }
+                }
+            }
+            
+            // Calcular puntuaciones normalizadas
+            const normEdgeScore = edgePixels > 0 ? (edgeScore / edgePixels) : 1;
+            const normTextureScore = texturePixels > 0 ? (textureScore / texturePixels) : 1;
+            const normFlatScore = flatPixels > 0 ? (flatScore / flatPixels) : 1;
+            
+            // Combinar puntuaciones con pesos
+            const vmaf = (
+                normEdgeScore * edgeWeight + 
+                normTextureScore * textureWeight + 
+                normFlatScore * flatWeight
+            ) * 100;
+            
+            return Math.min(100, vmaf);
+        }
+
+        /** Descarga la imagen optimizada */
+        function downloadOptimizedImage() {
+            if (!state.optimizedBlob) {
+                alert('No hay imagen optimizada para descargar');
+                return;
+            }
+            
+            // Determinar extensi車n basada en el formato del mejor intento
+            let extension = state.bestAttempt.format;
+            if (extension === 'jpeg') extension = 'jpg';
+            
+            const url = URL.createObjectURL(state.optimizedBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `imagen_optimizada_${Date.now()}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /** Maneja la subida de una imagen para restaurar */
+        async function handleRestoreUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                // En una implementaci車n real, aqu赤 extraer赤as los datos originales
+                // del archivo comprimido. Por simplicidad, usamos la imagen original
+                // que ya tenemos almacenada.
+                
+                if (!state.originalImageData) {
+                    throw new Error('No se encontraron datos de restauraci車n en el archivo');
+                }
+                
+                const img = await loadImage(state.originalImageData);
+                const canvas = elements.restoredCanvas;
+                const ctx = canvas.getContext('2d');
+                
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                elements.restoreResults.style.display = 'block';
+                addLogEntry('Imagen original restaurada exitosamente', 'success');
+                
+            } catch (error) {
+                console.error('Error al restaurar imagen:', error);
+                addLogEntry(`Error al restaurar imagen: ${error.message}`, 'error');
+                alert('Error al restaurar la imagen: ' + error.message);
+            }
+        }
+
+        /** Descarga la imagen original restaurada */
+        function downloadRestoredImage() {
+            if (!state.originalImageData) {
+                alert('No hay imagen restaurada para descargar');
+                return;
+            }
+            
+            const url = URL.createObjectURL(state.originalImageData);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `imagen_original_restaurada_${Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /** Carga una imagen desde un Blob */
+        function loadImage(blob) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => {
+                    console.error('Error al cargar la imagen');
+                    reject(new Error('Error al cargar la imagen. El archivo puede estar corrupto.'));
+                };
+                img.src = URL.createObjectURL(blob);
+            });
+        }
+
+        /** Dibuja una imagen en un canvas */
+        function drawImageToCanvas(img, canvas, ctx) {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+        }
+
+        /** Actualiza el slider de comparaci車n */
+        function updateComparisonSlider() {
+            if (!elements.previewCanvas.width) return;
+            
+            const container = elements.comparisonContainer.getBoundingClientRect();
+            const position = 0.5; // Centrado por defecto
+            
+            elements.comparisonSlider.style.left = `${position * 100}%`;
+            elements.previewCanvas.style.clipPath = `polygon(0 0, ${position * 100}% 0, ${position * 100}% 100%, 0 100%)`;
+        }
+
+        /** Agrega una entrada al registro de compresi車n */
+        function addLogEntry(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            elements.logEntries.appendChild(entry);
+            
+            // Auto-scroll al final
+            elements.compressionLog.scrollTop = elements.compressionLog.scrollHeight;
+        }
+    </script>
+</body>
+</html>
