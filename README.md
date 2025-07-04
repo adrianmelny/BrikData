@@ -1,15 +1,23 @@
 # BrikData tools Advanced Image Compressor Pro
 
+
+[https://github.com/adrianmelny/BrikData](https://adrianmelny.github.io/BrikData/)
+
 Advanced Image Compressor Pro
 🔥 Compresor de Imágenes Avanzado e Inteligente para Web
 Advanced Image Compressor Pro es una aplicación web que permite reducir el tamaño de imágenes de forma eficiente y automática, preservando la calidad visual mediante análisis inteligentes y métricas de calidad como PSNR, SSIM y VMAF.
 
 🚀 Características Principales
 ✅ Compresión automática basada en tamaño objetivo y tolerancia.
+
 ✅ Compatible con múltiples formatos: WebP, AVIF, JPEG, PNG.
+
 ✅ Análisis inteligente de la imagen: detección de tipo, bordes, textura y transparencia.
+
 ✅ Ajuste adaptativo de calidad para alcanzar el tamaño ideal sin sacrificar apariencia.
+
 ✅ Vista previa en tiempo real y comparador deslizante entre original y comprimido.
+
 ✅ Métricas avanzadas de calidad:
 
 PSNR (Relación Señal-Ruido de Pico)
